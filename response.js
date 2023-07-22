@@ -17,5 +17,4 @@ const responseInterval = 5 * 60 * 1000; // 5 minutes
 
 checkResponse();
 
-// Start sending pings at the specified interval
 setInterval(checkResponse, responseInterval);
