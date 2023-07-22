@@ -1,8 +1,8 @@
-const fetch = require('node-fetch');
+const axios = require('axios');
 
 async function checkResponse() {
   try {
-    const response = await fetch('https://discordbot-eirh.onrender.com');
+    const response = await axios.get('https://discordbot-eirh.onrender.com');
     if (response.ok) {
       console.log('Application running.');
     } else {
