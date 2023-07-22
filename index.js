@@ -1,6 +1,5 @@
 const fs = require('fs')
 const path = require('path');
-const keepAlive = require('./server')
 const {
     Client,
     Events,
