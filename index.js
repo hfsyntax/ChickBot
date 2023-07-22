@@ -23,6 +23,5 @@ for (const file of eventFiles) {
 		client.on(event.name, (...args) => event.execute(...args));
 	}
 }
-  
-  keepAlive()
-  client.login(process.env.TOKEN)
+
+client.login(process.env.TOKEN)
