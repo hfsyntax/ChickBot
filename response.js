@@ -13,10 +13,8 @@ async function checkResponse() {
   }
 }
 
-// Interval at which to send the ping (in milliseconds)
 const responseInterval = 5 * 60 * 1000; // 5 minutes
 
-// Send the initial ping immediately when the script starts
 checkResponse();
 
 // Start sending pings at the specified interval
