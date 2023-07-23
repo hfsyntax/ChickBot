@@ -1,6 +1,5 @@
 const fs = require('fs')
 const path = require('path');
-const res = require('./response.js');
 const {
     Client,
     Events,
