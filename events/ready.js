@@ -38,9 +38,9 @@ async function sendHeartbeat(client) {
 module.exports = {
     name: Events.ClientReady,
     once: false,
-    execute(client) {
+    async execute(client) {
         console.log(`Ready! Logged in as ${client.user.tag}`);
         console.log(`WebSocket Status: ${client.ws.status}`);
-        setInterval(() => sendHeartbeat(client), heartbeatInterval);
+        setInterval(() => await sendHeartbeat(client), heartbeatInterval);
     },
 };
