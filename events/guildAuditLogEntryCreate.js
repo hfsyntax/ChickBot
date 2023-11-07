@@ -7,7 +7,7 @@ const GuildAuditLogEntryCreate = {
         const { action, executorId, targetId } = auditLog
         const executor = await server.members.fetch(executorId)
         const target = await server.members.client.users.fetch(targetId)
-        const channel = server.channels.cache.find(c => c.name === "development")
+        const channel = server.channels.cache.find(c => c.name === "logs")
         if (action === AuditLogEvent.MemberKick || action == auditLog.MemberBanAdd) {
             const embed = new EmbedBuilder()
             .setAuthor({ name: `${executor.user.username} <${executor.id}>`, iconURL: executor.user.avatarURL() })
