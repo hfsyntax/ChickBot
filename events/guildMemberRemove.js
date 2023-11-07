@@ -4,7 +4,7 @@ const GuildMemberRemove = {
 	name: Events.GuildMemberRemove,
 	once: false,
 	async execute(member) {
-                const channel = member.guild.channels.cache.find(c => c.name === "development")
+                const channel = member.guild.channels.cache.find(c => c.name === "logs")
                 const embed = new EmbedBuilder()
                 .setColor("#6a0dad")
                 .setAuthor({ name: `${member.user.username} <${member.id}>`, iconURL: member.user.avatarURL() ? member.user.avatarURL() : member.user.defaultAvatarURL})
