@@ -1,25 +1,28 @@
-const {
-    Events,
-    EmbedBuilder
-} = require('discord.js');
+import { Events, EmbedBuilder } from 'discord.js'
 
-module.exports = {
-    name: Events.GuildMemberAdd,
+const GuildBanAdd = {
+    name: Events.GuildBanAdd,
     once: false,
-    execute(member) {
-        const channel = member.guild.channels.cache.find(c => c.name === "logs")
+    execute(ban) {
+        const channel = ban.guild.channels.cache.find(c => c.name === "logs");
         const embed = new EmbedBuilder()
-            .setColor("008000")
             .setAuthor({
-                name: `${member.user.username} <${member.id}>`,
-                iconURL: member.user.avatarURL() ? member.user.avatarURL() : member.user.defaultAvatarURL
+                name: `${ban.user.username} <${ban.user.id}>`,
+                iconURL: ban.user.avatarURL()
             })
+            .addFields({
+                name: 'Reason:',
+                value: `${ban.reason}`
+            })
+            .setColor("#FF0000")
             .setTimestamp()
             .setFooter({
-                text: "Joined"
-            });
+                text: 'Banned'
+            });  
         channel.send({
             embeds: [embed]
         });
     },
 };
+
+export default GuildBanAdd
