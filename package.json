@@ -1,17 +1,17 @@
 {
-  "name": "bot",
+  "name": "Chick Discord Bot",
   "version": "1.0.0",
-  "description": "",
+  "description": "A Discord bot for Competitive Crossy Road Community Server.",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
   "keywords": [],
-  "author": "",
+  "author": "Noah Kaiser",
   "license": "ISC",
   "dependencies": {
     "@sapphire/snowflake": "^3.5.1",
-    "axios": "^1.4.0",
     "discord.js": "^14.11.0"
   }
 }
