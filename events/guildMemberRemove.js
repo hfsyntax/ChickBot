@@ -4,12 +4,11 @@ const GuildMemberRemove = {
 	name: Events.GuildMemberRemove,
 	once: false,
 	async execute(member) {
-                console.log("user left")
                 const channel = member.guild.channels.cache.find(c => c.name === "development")
                 const embed = new EmbedBuilder()
                 .setColor("#6a0dad")
                 .setAuthor({ name: `${member.user.username} <${member.id}>`, iconURL: member.user.avatarURL() ? member.user.avatarURL() : member.user.defaultAvatarURL})
-                .setTimestamp();
+                .setTimestamp()
                 
                 const fetchedLogs = await member.guild.fetchAuditLogs({
                         type: AuditLogEvent.MemberKick,
@@ -20,15 +19,13 @@ const GuildMemberRemove = {
                 .filter(a => a.targetId === member.id)
 
                 
-                console.log(fetchedLogs.entries.size)
                 if (fetchedLogs.entries.size >= 1){
-                        const firstEntry = fetchedLogs.entries.first().createdAt;
-                        console.log(`user kicked: ${firstEntry > member.joinedAt}`)
+                        const firstEntry = fetchedLogs.entries.first().createdAt
                         if (firstEntry > member.joinedAt) 
-                                return;
+                                return
                 } 
-                channel.send({ embeds: [embed] });
+                channel.send({ embeds: [embed] })
 	},
-};
+}
 
 export default GuildMemberRemove
