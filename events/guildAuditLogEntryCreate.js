@@ -5,7 +5,7 @@ const GuildAuditLogEntryCreate = {
 	once: false,
 	async execute(auditLog, server) {
         const { action, executorId, targetId } = auditLog
-        if (action === AuditLogEvent.MemberKick || action == auditLog.MemberBanAdd) {
+        if (action === AuditLogEvent.MemberKick || action == AuditLogEvent.MemberBanAdd) {
             const executor = await server.members.fetch(executorId)
             const target = await server.members.client.users.fetch(targetId)
             const channel = server.channels.cache.find(c => c.name === "logs")
