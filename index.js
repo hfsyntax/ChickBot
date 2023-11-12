@@ -11,12 +11,11 @@ const client = new Client({
 		GatewayIntentBits.GuildMessageReactions,
 		GatewayIntentBits.MessageContent,
 		GatewayIntentBits.GuildMembers,
+		GatewayIntentBits.GuildPresences,
 		GatewayIntentBits.GuildModeration
 	]
 })
 
-client.challengeID = 1
-client.challegers = new Collection()
 client.commands = new Collection()
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const commandsPath = path.join(__dirname, 'commands')
@@ -41,7 +40,7 @@ client.on(Events.InteractionCreate, async interaction => {
 	}
 
 	try {
-		await command.default.execute(client, interaction)
+		await command.default.execute(interaction)
 	} catch (error) {
 		console.error(error)
 		if (interaction.replied || interaction.deferred) {
