@@ -1,6 +1,3 @@
-//ensure partial reactions work - when client restarts
-//add judge command
-//cancel - optional arg for if challenge is queued or not
 import { SlashCommandBuilder, EmbedBuilder, ChannelType, PermissionFlagsBits, CommandInteraction, User, GuildMember, TextChannel, Message } from 'discord.js'
 import mysql from 'mysql2/promise'
 
