@@ -32,7 +32,7 @@ const cancel = {
                     m.embeds[0].data.author.name.split('<')[1].split('>')[0]
                     === interaction.member.id
                 )
-                if (challenge.size === 1) {
+                if (challenge.size > 0) {
                     const embed = new EmbedBuilder()
                     .setColor("Red")
                     .setAuthor({
