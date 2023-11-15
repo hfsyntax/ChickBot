@@ -1,14 +1,21 @@
-import { AuditLogEvent, Events, EmbedBuilder } from 'discord.js'
+import { AuditLogEvent, Events, EmbedBuilder, GuildAuditLogsEntry, Guild } from 'discord.js'
 
 const GuildAuditLogEntryCreate = {
 	name: Events.GuildAuditLogEntryCreate,
 	once: false,
-	async execute(auditLog, server) {
+	/**
+     * Emitted whenever a guild audit log entry is created.
+     *
+     * @param {GuildAuditLogsEntry} auditLog The entry that was created.
+     * @param {Guild} server The guild where the entry was created.
+     */
+    async execute(auditLog, server) {
         const { action, executorId, targetId } = auditLog
-        if (action === AuditLogEvent.MemberKick || action == AuditLogEvent.MemberBanAdd) {
+        const logs = "682109939950288954"
+        if (action === AuditLogEvent.MemberKick || action === AuditLogEvent.MemberBanAdd || action === AuditLogEvent.MemberBanRemove) {
             const executor = await server.members.fetch(executorId)
             const target = await server.members.client.users.fetch(targetId)
-            const channel = server.channels.cache.find(c => c.name === "logs")
+            const channel = server.channels.cache.get(logs)
             const embed = new EmbedBuilder()
             .setAuthor({ name: `${executor.user.username} <${executor.id}>`, iconURL: executor.user.avatarURL() })
             .addFields(
@@ -19,15 +26,20 @@ const GuildAuditLogEntryCreate = {
             
             if (action === AuditLogEvent.MemberKick) {
                 embed.setFooter({ text: 'Kicked'})
-                embed.setColor("#FFFF00")
+                embed.setColor("Yellow")
             }
 
-            if (action === AuditLogEvent.MemberBanAdd) {
+            else if (action === AuditLogEvent.MemberBanAdd) {
                 embed.setFooter({ text: 'Banned'})
-                embed.setColor("#FF0000")
+                embed.setColor("Red")
+            }
+
+            else if (action === AuditLogEvent.MemberBanRemove) {
+                embed.setFooter({ text: 'Unbanned'})
+                embed.setColor("Blue")
             }
             
-            channel.send({ embeds: [embed] })
+            await channel.send({ embeds: [embed] })
             
         }
 	}
