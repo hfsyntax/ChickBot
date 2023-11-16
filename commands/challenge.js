@@ -1,3 +1,4 @@
+//add judge command
 import { SlashCommandBuilder, EmbedBuilder, ChannelType, PermissionFlagsBits, CommandInteraction, GuildMember, TextChannel } from 'discord.js'
 import mysql from 'mysql2/promise'
 
@@ -74,7 +75,6 @@ async function createMatchRequest(interaction, opponent, logs, playing, queued, 
 		await sentEmbed.edit({ embeds: [embed] })
 		reactionCollector = await sentEmbed.awaitReactions({ filter: collectorFilter, max: 1, time: 3600000, errors: ['time'] }).catch(async error => {
 			await logs.send(`<@${challengerID}> <@${opponentID}> did not respond in time.`)
-			console.log(sentEmbed)
 			await sentEmbed.delete({ timeout: 1000 })
 			console.log(error)
 			return {error: error}
