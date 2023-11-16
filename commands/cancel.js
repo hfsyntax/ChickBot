@@ -5,7 +5,7 @@ const cancel = {
         .setName("cancel")
         .setDescription("Cancels a queue/challenge request."),
     async execute(interaction) {
-        const logs = interaction.guild.channels.cache.get("1171571198023442535")
+        const challengeLog = interaction.guild.channels.cache.get("1171571198023442535")
         const playing = "1172359960559108116"
         const queued = "1172360108307644507"
         const embed = new EmbedBuilder()
@@ -22,9 +22,9 @@ const cancel = {
             await interaction.member.roles.remove(queued)
             await interaction.reply("You've been removed from the queue of players waiting for a challenge.")
             embed.setFooter({ text: "Cancelled qeue for challenge" })
-            await logs.send({ embeds: [embed] })
+            await challengeLog.send({ embeds: [embed] })
         } else {
-            const messages = await logs.messages.fetch({ limit: 30 })
+            const messages = await challengeLog.messages.fetch({ limit: 30 })
             const challenge = messages.filter(m =>
                 m.embeds.length === 1 &&
                 m.embeds[0].data.author.name &&
@@ -34,7 +34,7 @@ const cancel = {
             )
             if (challenge.size > 0) {
                 embed.setFooter({ text: `Cancelled challenge ID: ${challenge.first().id}` })
-                await logs.send({ embeds: [embed] })
+                await challengeLog.send({ embeds: [embed] })
                 await challenge.first().delete({ timeout: 1000 })
                 await interaction.reply("Sucessfully cancelled your challenge.")
             } else {
