@@ -1,4 +1,3 @@
-//add judge command
 import { SlashCommandBuilder, EmbedBuilder, ChannelType, PermissionFlagsBits, CommandInteraction, GuildMember, TextChannel } from 'discord.js'
 import mysql from 'mysql2/promise'
 
@@ -189,7 +188,7 @@ const challenge = {
 			option.setName('opponent')
 				.setDescription('The user to challenge.')),
 	async execute(interaction) {
-		const logs = interaction.guild.channels.cache.find(c => c.id === "1171571198023442535")
+		const logs = interaction.guild.channels.cache.get("1171571198023442535")
 		let opponent = interaction.options.get("opponent")
 		const playing = "1172359960559108116"
 		const queued = "1172360108307644507"
