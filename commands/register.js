@@ -17,7 +17,7 @@ const register = {
 				await interaction.reply(`You are already registered for ${tournament}`)
 			} else {
 				const embed = new EmbedBuilder()
-					.setColor("#FFA500")
+					.setColor("Orange")
 					.setAuthor({ name: `${username} <${userID}>`, iconURL: avatarURL})
 					.setTimestamp()
 					.setFooter({ text: `Registered for ${tournament} 🏆` })
