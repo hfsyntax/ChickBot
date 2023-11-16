@@ -22,7 +22,7 @@ const unregister = {
 					.setTimestamp()
 					.setFooter({ text: `Withdrew from ${tournament} 🏆` })
 				await logs.send({ embeds: [embed] })
-				await interaction.reply(`Successfully unregistered for ${tournament}`)
+				await interaction.reply(`Successfully unregistered from ${tournament}`)
 				await interaction.member.roles.remove(tournamentRoleID)
 			}
 		} else {
