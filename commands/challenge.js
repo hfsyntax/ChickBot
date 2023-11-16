@@ -6,14 +6,14 @@ import mysql from 'mysql2/promise'
  *
  * @param {CommandInteraction} interaction The interaction sent from the slash command.
  * @param {GuildMember|CommandInteraction} opponent The user who was challenged.
- * @param {TextChannel} logs The channel to log events in.
+ * @param {TextChannel} challengeLog The channel to log events in.
  * @param {string} playing The id for the playing role.
  * @param {string} queued The id for the queued role.
  * @param {boolean} queuedMatch Whether the challenge was queued.
  * @returns {Promise<boolean>} whether the challenge is successfully created.
  * @throws {Error} If there is an error associated with mysql2 or if there is a Discord API error.
  */
-async function createMatchRequest(interaction, opponent, logs, playing, queued, queuedMatch) {
+async function createMatchRequest(interaction, opponent, challengeLog, playing, queued, queuedMatch) {
 	
 	const dbConnection = await mysql.createConnection({
 		host: process.env.DB_SERVERNAME,
@@ -62,7 +62,7 @@ async function createMatchRequest(interaction, opponent, logs, playing, queued, 
 		.setTimestamp()
 	
 	if (!queuedMatch) {
-		sentEmbed = await logs.send({ content: `<@${opponentID}>`, embeds: [embed] })
+		sentEmbed = await challengeLog.send({ content: `<@${opponentID}>`, embeds: [embed] })
 		await sentEmbed.react("👍")
 		await sentEmbed.react("👎")
 
@@ -73,7 +73,7 @@ async function createMatchRequest(interaction, opponent, logs, playing, queued, 
 		embed.setFooter({ text: `challenge ID: ${sentEmbed.id}` })
 		await sentEmbed.edit({ embeds: [embed] })
 		reactionCollector = await sentEmbed.awaitReactions({ filter: collectorFilter, max: 1, time: 3600000, errors: ['time'] }).catch(async error => {
-			await logs.send(`<@${challengerID}> <@${opponentID}> did not respond in time.`)
+			await challengeLog.send(`<@${challengerID}> <@${opponentID}> did not respond in time.`)
 			await sentEmbed.delete({ timeout: 1000 })
 			console.log(error)
 			return {error: error}
@@ -89,21 +89,21 @@ async function createMatchRequest(interaction, opponent, logs, playing, queued, 
 
 		if (reaction.emoji.name === '👍') {
 			if (opponent.roles.cache.has(playing)) {
-				await logs.send(`Challenge ${sentEmbed.id} initiated by <@${challengerID}> was cancelled because ${opponent.user.username} is already playing.`)
+				await challengeLog.send(`Challenge ${sentEmbed.id} initiated by <@${challengerID}> was cancelled because ${opponent.user.username} is already playing.`)
 				await sentEmbed.delete({ timeout: 1000 })
 				return false
 			} else if (interaction.member.roles.cache.has(playing)) {
-				await logs.send(`Challenge ${sentEmbed.id} initiated by <@${challengerID}> was cancelled they are already playing.`)
+				await challengeLog.send(`Challenge ${sentEmbed.id} initiated by <@${challengerID}> was cancelled they are already playing.`)
 				await sentEmbed.delete({ timeout: 1000 })
 				return false
 			}
 		} else if (reaction.emoji.name === '👎') {
 			await sentEmbed.delete({ timeout: 1000 })
-			await logs.send(`<@${challengerID}> ${opponent.user.username} rejected your challenge.`)
+			await challengeLog.send(`<@${challengerID}> ${opponent.user.username} rejected your challenge.`)
 			return false
 		}
 	} else {
-		sentEmbed = await logs.send({ embeds: [embed] })
+		sentEmbed = await challengeLog.send({ embeds: [embed] })
 	}
 	
 	if (challengerData.length === 0) {
@@ -188,7 +188,7 @@ const challenge = {
 			option.setName('opponent')
 				.setDescription('The user to challenge.')),
 	async execute(interaction) {
-		const logs = interaction.guild.channels.cache.get("1171571198023442535")
+		const challengeLog = interaction.guild.channels.cache.get("1171571198023442535")
 		let opponent = interaction.options.get("opponent")
 		const playing = "1172359960559108116"
 		const queued = "1172360108307644507"
@@ -202,8 +202,8 @@ const challenge = {
 			} else if (opponent.user.bot) {
 				await interaction.reply("You cannot challenge a bot")
 			} else {
-				await interaction.reply(`Attempting to create a challenge request in <#${logs.id}>.`)
-				await createMatchRequest(interaction, opponent, logs, playing, queued, false) 
+				await interaction.reply(`Attempting to create a challenge request in <#${challengeLog.id}>.`)
+				await createMatchRequest(interaction, opponent, challengeLog, playing, queued, false) 
 			}
 		} else {
 			const waiting = interaction.guild.roles.cache.get(queued)
@@ -218,12 +218,12 @@ const challenge = {
 				})
 				.setFooter({ text: "Qeued for challenge" })
 				.setTimestamp()
-				await logs.send({embeds: [embed]})
+				await challengeLog.send({embeds: [embed]})
 			} else {
 				opponent = waiting.members.first()
-				await interaction.reply(`You've been matched against ${opponent.user.username} see: <#${logs.id}>.`)
+				await interaction.reply(`You've been matched against ${opponent.user.username} see: <#${challengeLog.id}>.`)
 				await opponent.roles.remove(queued)
-				await createMatchRequest(interaction, opponent, logs, playing, queued, true)
+				await createMatchRequest(interaction, opponent, challengeLog, playing, queued, true)
 			} 
 		}
 	}
