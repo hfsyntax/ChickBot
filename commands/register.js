@@ -7,25 +7,28 @@ const register = {
 		.setDescription("Adds tournament role for participating users."),
 	async execute(interaction) {
 		if (process.env.REGISTRATION === "1") {
-			const channel = interaction.guild.channels.cache.find(c => c.name === "logs")
+			const logs = interaction.guild.channels.cache.get("682109939950288954")
 			const roleID = "823367185048928268"
-			if (interaction.member.roles.cache.some(role => role.id === roleID)) {
-				await interaction.reply("You are already registered")
+			const tournament = process.env.TOURNAMENT_NAME
+			const username = interaction.member.user.username
+			const userID = interaction.member.id
+			const avatarURL = interaction.member.user.avatarURL() ? interaction.member.user.avatarURL() : interaction.member.user.defaultAvatarURL
+			if (interaction.member.roles.cache.has(roleID)) {
+				await interaction.reply(`You are already registered for ${tournament}`)
 			} else {
 				const embed = new EmbedBuilder()
 					.setColor("#FFA500")
-					.setAuthor({ name: `${interaction.member.user.username} <${interaction.member.id}>`, iconURL: interaction.member.user.avatarURL() ? interaction.member.user.avatarURL() : interaction.member.user.defaultAvatarURL })
+					.setAuthor({ name: `${username} <${userID}>`, iconURL: avatarURL})
 					.setTimestamp()
-					.setFooter({ text: "Registered for LCS 🏆" });
-				await channel.send({ embeds: [embed] });
-				await interaction.reply("foo")
-				await interaction.deleteReply()
-				await interaction.member.roles.add(roleID);
+					.setFooter({ text: `Registered for ${tournament} 🏆` })
+				await logs.send({ embeds: [embed] })
+				await interaction.reply(`Successfully registered for ${tournament}`)
+				await interaction.member.roles.add(roleID)
 			}
 		} else {
 			await interaction.reply("No tournaments are available")
 		}
-	},
-};
+	}
+}
 
 export default register
