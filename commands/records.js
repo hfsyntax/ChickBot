@@ -27,6 +27,7 @@ const records = {
         .addStringOption(option =>
             option.setName('category')
                 .setDescription('The category to query.')
+                .setRequired(true)
                 .addChoices(
                     { name: '25hops', value: '25hops' },
                     { name: '50hops', value: '50hops' },
@@ -42,6 +43,7 @@ const records = {
         .addStringOption(option =>
             option.setName('platform')
                 .setDescription('The platform to query.')
+                .setRequired(true)
                 .addChoices(
                     { name: 'mobile', value: 'mobile' },
                     { name: 'pc', value: 'pc' })),
