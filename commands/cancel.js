@@ -25,10 +25,6 @@ const cancel = {
                 if (interaction.member.id === challengerID || interaction.member.id === opponentID) {
                     await interaction.reply("You cannot cancel a challenge you are already playing.")
                 } else {
-                    const challenger = interaction.channel.members.cache.get(challengerID)
-                    console.log(challenger)
-                    return
-                    const opponent = ""
                     embed.setFooter({ text: `Referee cancelled challenge ID: ${challengeID}` })
                     await challengeLog.send({ embeds: [embed] })
                     await interaction.reply(`Sucessfully cancelled challenge ID: ${challengeID}.`)
