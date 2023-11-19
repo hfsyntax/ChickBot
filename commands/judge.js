@@ -101,10 +101,13 @@ const judge = {
                     const opponentScore = challengerID !== player1ID ? score1 : score2
                     const opponentResult = winnerID === opponentID ? "Won" : "Lost"
                     
-                    //insert rows in crossy road challenges -- CHECK RESULT
+                    //insert rows in crossy road challenges
                     const fields = "challenger_id, opponent_id, winner_id, challenger_initial_elo, challenger_final_elo, challenger_score, opponent_initial_elo, opponent_final_elo, opponent_score"
                     await dbConnection.execute(`INSERT INTO \`Crossy Road Challenges\` (${fields}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [challengerID, opponentID, winnerID, challengerInitalElo, challengerFinalElo, challengerScore, opponentInitalElo, opponentFinalElo, opponentScore])
-                    
+                    //update all player ranks
+                    await dbConnection.execute("SET @rank = 0;")
+                    await dbConnection.execute("UPDATE `Crossy Road Elo Rankings` SET rank = (@rank := @rank + 1) ORDER BY elo DESC;");
+
                     //send log to challenge-logs with data changes
                     const embed = new EmbedBuilder()
                     .setColor("Orange")
