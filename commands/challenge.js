@@ -46,7 +46,6 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 	const opponentID = 	opponent.user.id
 	const everyone = "600865413890310155"
 	const refs = "799505175541710848"
-	const crossyoff = "1130623021313429504"
 	let sentEmbed
 	let reactionCollector
 	let reaction
@@ -105,22 +104,6 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 		}
 	} else {
 		sentEmbed = await challengeLog.send({ embeds: [embed] })
-	}
-	
-	if (challengerData.length === 0) {
-		await dbConnection.execute('INSERT INTO `Crossy Road Elo Rankings` (name, id) VALUES (?, ?)', [challengerName, challengerID])
-	}
-
-	if (opponentData.length === 0) {
-		await dbConnection.execute('INSERT INTO `Crossy Road Elo Rankings` (name, id) VALUES (?, ?)', [opponentName, opponentID])
-	}
-	
-	if (!interaction.member.roles.cache.has(crossyoff)) {
-		await interaction.member.roles.add(crossyoff)
-	}
-	
-	if (!opponent.roles.cache.has(crossyoff)) {
-		await opponent.roles.add(crossyoff)
 	}
 	
 	embed.setTimestamp()
