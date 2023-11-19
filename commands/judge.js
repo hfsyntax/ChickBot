@@ -1,4 +1,3 @@
-//test using donovan in opera and brian in chrome
 import { SlashCommandBuilder, EmbedBuilder, CommandInteraction } from 'discord.js'
 import mysql from 'mysql2/promise'
 import {calculateElo} from '../utilities/calculateElo.js'
@@ -26,6 +25,7 @@ const judge = {
     async execute(interaction) {
         const referee = "799505175541710848"
         const playing = "1172359960559108116"
+        const crossyoff = "1130623021313429504"
         if (interaction.member.roles.cache.has(referee)) {
             if (interaction.channel.name.includes("challenge")) {
                 const player1 = interaction.options.get("player1")
@@ -60,6 +60,18 @@ const judge = {
                     })
                 
                     if (dbConnection.error) return await interaction.channel.send(`Error connecting to the database. Contact <@${interaction.guild.ownerId}>`)
+                    
+                    //insert new players and assign crossyoff role
+                    const [player1Query] = await dbConnection.execute('SELECT id FROM `Crossy Road Elo Rankings` WHERE `id` = ?', [player1ID])
+	                const [player2Query] = await dbConnection.execute('SELECT id FROM `Crossy Road Elo Rankings` WHERE `id` = ?', [player2ID])
+                    if (player1Query.length === 0) {
+                        await dbConnection.execute('INSERT INTO `Crossy Road Elo Rankings` (name, id) VALUES (?, ?)', [player1.user.username, player1ID])
+                        await player1.member.roles.add(crossyoff)
+                    }
+                    if (player2Query.length === 0) {
+                        await dbConnection.execute('INSERT INTO `Crossy Road Elo Rankings` (name, id) VALUES (?, ?)', [player2.user.username, player2ID])
+                        await player2.member.roles.add(crossyoff)
+                    }
                     
                     //fetch each players data based on id
                     const [player1Data] = await dbConnection.execute('SELECT * FROM `Crossy Road Elo Rankings` WHERE `id` = ?', [player1ID])
