@@ -31,7 +31,7 @@ const elo = {
             const embed = new EmbedBuilder()
                 .setColor("Blue")
                 .setAuthor({
-                    name: `${userData[0].name} <${user.user.id}> (${userData[0].elo}) Played: ${userData[0].games} Won: ${userData[0].won}`,
+                    name: `${userData[0].name} <${user.user.id}> (${userData[0].elo}) Rank: #${userData[0].rank} Played: ${userData[0].games} Won: ${userData[0].won}`,
                     iconURL: user.user.avatarURL() ? user.user.avatarURL() : user.user.defaultAvatarURL
                 })
                 .setTimestamp()
