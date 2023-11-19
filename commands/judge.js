@@ -86,7 +86,7 @@ const judge = {
                     const challengeMessage = await challengeLog.messages.fetch(challengeID)
                     const challengerID = challengeMessage.embeds[0].data.author.name.match(/<(.*?)>/)[1]
                     const challenerName = challengerID === player1ID ? player1Data[0].name : player2Data[0].name
-                    const challengerPlayed = challengerID === player1ID ? player1Data[0].played : player2Data[0].played
+                    const challengerPlayed = challengerID === player1ID ? player1Data[0].games : player2Data[0].games
                     const challengerWon = challengerID === player1ID ? player1Data[0].won : player2Data[0].won
                     const challengerInitalElo = challengerID === player1ID ? initalPlayer1Elo : initalPlayer2Elo
                     const challengerFinalElo = challengerID === player1ID ? player1Data[0].elo : player2Data[0].elo
@@ -94,7 +94,7 @@ const judge = {
                     const challengerResult = winnerID === challengeID ? "Won" : "Lost"
                     const opponentID = challengerID !== player1ID ? player1ID : player2ID
                     const opponentName = challengerID !== player1ID ? player1Data[0].name : player2Data[0].name
-                    const opponentPlayed = challengerID !== player1ID ? player1Data[0].played : player2Data[0].played
+                    const opponentPlayed = challengerID !== player1ID ? player1Data[0].games : player2Data[0].games
                     const opponentWon = challengerID !== player1ID ? player1Data[0].won : player2Data[0].won
                     const opponentInitalElo = challengerID !== player1ID ? initalPlayer1Elo : initalPlayer2Elo
                     const opponentFinalElo = challengerID !== player1ID ? player1Data[0].elo : player2Data[0].elo
@@ -123,6 +123,7 @@ const judge = {
                     await player1.member.roles.remove(playing)
                     await player2.member.roles.remove(playing)
                     await interaction.channel.delete({timeout: 1000})
+                    await dbConnection.end()
                 }
             } else {
                 await interaction.reply("You must be in a created challenge channel to use this command.")
