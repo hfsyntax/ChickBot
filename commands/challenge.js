@@ -1,3 +1,4 @@
+//add judge command
 import { SlashCommandBuilder, EmbedBuilder, ChannelType, PermissionFlagsBits, CommandInteraction, GuildMember, TextChannel } from 'discord.js'
 import mysql from 'mysql2/promise'
 
@@ -171,7 +172,7 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 	rulesEmbed = new EmbedBuilder()
 		.setColor("Blue")
 		.setTitle("CrossyOff Challenge Rules")
-		.setDescription("Rules: <http://crossyoff.rf.gd/rules/challenges.html>")
+		.setDescription("Rules: <https://crossyoff.rf.gd/rules/challenges.html>")
 		.setFooter({ text: `challenge ID: ${sentEmbed.id} When finished ping @Referee` })
 		.setTimestamp()
 	
