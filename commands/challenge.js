@@ -1,4 +1,3 @@
-//add judge command
 import { SlashCommandBuilder, EmbedBuilder, ChannelType, PermissionFlagsBits, CommandInteraction, GuildMember, TextChannel } from 'discord.js'
 import mysql from 'mysql2/promise'
 
@@ -125,11 +124,10 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 				id: interaction.client.user.id,
 				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks]
 			},
-			/* uncomment when command finished to prevent uneccessary notifs
 			{
 				id: refs,
 				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
-			},*/
+			},
 			{
 				id: opponent.user.id,
 				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
