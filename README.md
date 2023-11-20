@@ -7,4 +7,5 @@ Discord bot for The Competitive Crossy Road Community: https://crossyoff.rf.gd
 # Supports Speedrun API Queries
 ![Speedrun Query Image](https://github.com/hfsyntax/ChickBot/blob/main/sample_images/sr-board.png)
 
+# Supports CrossyOff Player Lookups
 ![Elo lookup Image](https://github.com/hfsyntax/ChickBot/blob/main/sample_images/cr-elo.png)
