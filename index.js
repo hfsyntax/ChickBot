@@ -3,6 +3,7 @@ import path, { dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { Client, Events, GatewayIntentBits, Collection } from 'discord.js'
 import 'dotenv/config'
+import keepAlive from './keep_alive.js'
 
 const client = new Client({
 	intents: [
