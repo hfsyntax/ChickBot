@@ -27,8 +27,11 @@ const cancel = {
                 } else {
                     const challenger = interaction.channel.members.get(challengerID)
                     const opponent = interaction.channel.members.get(opponentID)
-                    await challenger.roles.remove(playing)
-                    await opponent.roles.remove(playing)
+                    //check in case either leaves the server
+                    if (challenger)
+                        await challenger.roles.remove(playing)
+                    if (opponent)
+                        await opponent.roles.remove(playing)
                     embed.setFooter({ text: `Referee cancelled challenge ID: ${challengeID}` })
                     await challengeLog.send({ embeds: [embed] })
                     await interaction.reply(`Sucessfully cancelled challenge ID: ${challengeID}.`)
