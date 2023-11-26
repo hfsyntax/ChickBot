@@ -3,12 +3,16 @@ import { SlashCommandBuilder, EmbedBuilder } from 'discord.js'
 const cancel = {
     data: new SlashCommandBuilder()
         .setName("cancel")
-        .setDescription("Cancels a queue/challenge request."),
+        .setDescription("Cancels a queue/challenge request.")
+        .addStringOption(option =>
+            option.setName("reason")
+                .setDescription("The reason for cancelling.")),
     async execute(interaction) {
         const challengeLog = interaction.guild.channels.cache.get("1171571198023442535")
         const playing = "1172359960559108116"
         const queued = "1172360108307644507"
         const referee = "799505175541710848"
+        const reason = interaction.options.get("reason")
         const embed = new EmbedBuilder()
             .setColor("Red")
             .setAuthor({
@@ -16,6 +20,10 @@ const cancel = {
                 iconURL: interaction.user.avatarURL() ? interaction.user.avatarURL() : interaction.user.defaultAvatarURL
             })
             .setTimestamp()
+            .addFields(
+                { name: 'Reason:', value: reason ? reason.value : "no reason specified" }
+            )
+
         if (interaction.channel.name.includes("challenge")) {
             if (interaction.member.roles.cache.has(referee)) {
                 const challengeID = interaction.channel.name.split("-")[1]
@@ -35,7 +43,7 @@ const cancel = {
                     embed.setFooter({ text: `Referee cancelled challenge ID: ${challengeID}` })
                     await challengeLog.send({ embeds: [embed] })
                     await interaction.reply(`Sucessfully cancelled challenge ID: ${challengeID}.`)
-                    await interaction.channel.delete({timeout: 1000})
+                    await interaction.channel.delete({ timeout: 1000 })
                 }
             } else {
                 await interaction.reply("You cannot cancel a challenge you are already playing.")
