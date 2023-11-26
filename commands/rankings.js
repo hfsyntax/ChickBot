@@ -73,6 +73,7 @@ const rankings = {
             .setColor("Green")
             .setThumbnail("https://www.speedrun.com/static/game/j1n29w1p/cover.png?v=a0d1a35")
             .setFooter({ text: `Retrieved from speedrun.com/crossy` })
+            .setTimestamp()
         await interaction.channel.send({ embeds: [embed] })
     }
 }
