@@ -72,7 +72,7 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 		embed.setFooter({ text: `challenge ID: ${sentEmbed.id}` })
 		await sentEmbed.edit({ embeds: [embed] })
 		reactionCollector = await sentEmbed.awaitReactions({ filter: collectorFilter, max: 1, time: 3600000, errors: ['time'] }).catch(async error => {
-			await challengeLog.send(`<@${challengerID}> <@${opponentID}> did not respond in time.`)
+			await challengeLog.send(`<@${challengerID}> ${opponent.user.username} did not respond in time.`)
 			await sentEmbed.delete({ timeout: 1000 })
 			console.log(error)
 			return {error: error}
@@ -150,12 +150,29 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 	await interaction.member.roles.add(playing)
 	await opponent.roles.add(playing)
 
+	
+	function generateMoves() {
+		const possibleMoves = ["LEFT", "RIGHT"]
+		
+		const movesArray = Array.from({ length: 4 }, () => possibleMoves[Math.floor(Math.random() * possibleMoves.length)])
+		
+		const movesTodo = movesArray.join(" ")
+		
+		return movesTodo
+	}
+
 	rulesEmbed = new EmbedBuilder()
 		.setColor("Blue")
 		.setTitle("CrossyOff Challenge Rules")
 		.setDescription("Rules: <https://crossyoff.rf.gd/rules/challenges.html>")
 		.setFooter({ text: `challenge ID: ${sentEmbed.id} When finished ping @Referee` })
 		.setTimestamp()
+		.addFields(
+			{ name: 'Before starting runs', value: "To prove your runs are authentic we need you to complete a series of moves before starting each run." },
+			{ name: 'Run 1 Moves:', value: generateMoves() },
+			{ name: 'Run 2 Moves:', value: generateMoves() },
+			{ name: 'Run 3 Moves:', value: generateMoves() }
+		)
 	
 	await createdChannel.send({embeds: [rulesEmbed]})
 	await dbConnection.end()
