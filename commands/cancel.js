@@ -9,6 +9,7 @@ const cancel = {
                 .setDescription("The reason for cancelling.")),
     async execute(interaction) {
         const challengeLog = interaction.guild.channels.cache.get("1171571198023442535")
+        const challengeLobbyID = "1175955527688278016"
         const playing = "1172359960559108116"
         const queued = "1172360108307644507"
         const referee = "799505175541710848"
@@ -24,7 +25,8 @@ const cancel = {
                 { name: 'Reason:', value: reason ? reason.value : "no reason specified" }
             )
 
-        if (interaction.channel.name.includes("challenge")) {
+        // challenge and not challenge lobby
+        if (interaction.channel.name.includes("challenge") && interaction.channel.id !== challengeLobbyID) {
             if (interaction.member.roles.cache.has(referee)) {
                 const challengeID = interaction.channel.name.split("-")[1]
                 const challengeEmbed = await challengeLog.messages.fetch(challengeID)
