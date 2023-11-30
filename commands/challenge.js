@@ -170,17 +170,6 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 	await interaction.member.roles.add(playing)
 	await opponent.roles.add(playing)
 
-
-	function generateMoves() {
-		const possibleMoves = ["LEFT", "RIGHT"]
-
-		const movesArray = Array.from({ length: 4 }, () => possibleMoves[Math.floor(Math.random() * possibleMoves.length)])
-
-		const movesTodo = movesArray.join(" ")
-
-		return movesTodo
-	}
-
 	rulesEmbed = new EmbedBuilder()
 		.setColor("Blue")
 		.setTitle("CrossyOff Challenge Rules")
@@ -188,10 +177,7 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 		.setFooter({ text: `challenge ID: ${sentEmbed.id} When finished ping @Referee` })
 		.setTimestamp()
 		.addFields(
-			{ name: 'Before starting runs', value: "To prove your runs are authentic we need you to complete a series of moves before starting each run." },
-			{ name: 'Run 1 Moves:', value: generateMoves() },
-			{ name: 'Run 2 Moves:', value: generateMoves() },
-			{ name: 'Run 3 Moves:', value: generateMoves() }
+			{ name: 'Important Rule Highlights', value: "- all runs must be streamed and have a savable link\n- do not open Crossy Road until after stream has started\n- use /run before each run" }
 		)
 
 	await createdChannel.send({ embeds: [rulesEmbed] })
