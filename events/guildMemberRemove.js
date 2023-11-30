@@ -14,6 +14,7 @@ const GuildMemberRemove = {
                 const embed = new EmbedBuilder()
                 .setColor("Purple")
                 .setAuthor({ name: `${member.user.username} <${member.id}>`, iconURL: member.user.avatarURL() ? member.user.avatarURL() : member.user.defaultAvatarURL})
+                .setFooter({ text: "Left"})
                 .setTimestamp()
                 
                 const fetchedKicks = await member.guild.fetchAuditLogs({
