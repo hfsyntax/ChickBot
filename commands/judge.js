@@ -26,8 +26,9 @@ const judge = {
         const referee = "799505175541710848"
         const playing = "1172359960559108116"
         const crossyoff = "1130623021313429504"
+        const challengeLobbyID = "1175955527688278016"
         if (interaction.member.roles.cache.has(referee)) {
-            if (interaction.channel.name.includes("challenge")) {
+            if (interaction.channel.name.includes("challenge") && interaction.channel.id !== challengeLobbyID) {
                 const player1 = interaction.options.get("player1")
                 const player1ID = player1.user.id
                 const score1 = interaction.options.get("score1").value
