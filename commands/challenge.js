@@ -180,7 +180,7 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 			{ name: 'Important Rule Highlights', value: "- all runs must be streamed and have a savable link\n- do not open Crossy Road until after stream has started\n- use /run before each run" }
 		)
 
-	await createdChannel.send({ embeds: [rulesEmbed] })
+	await createdChannel.send({content: `<@${challengerID}> <@${opponentID}>`, embeds: [rulesEmbed] })
 	await dbConnection.end()
 	return true
 }
