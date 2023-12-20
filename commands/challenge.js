@@ -21,12 +21,11 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 		password: process.env.DB_PASSWORD,
 		database: process.env.DB_DBNAME
 	}).catch(async error => {
-		await dbConnection.end()
 		console.log(error.stack)
 		return { error: error }
 	})
 
-	if (dbConnection.error) return false
+	if (dbConnection.error) return await interaction.reply(`Database connection error, contact <@${interaction.guild.ownerId}>`)
 
 	opponent = opponent.member ? opponent.member : opponent
 	const [challengerData] = await dbConnection.execute('SELECT * FROM `Crossy Road Elo Rankings` WHERE `id` = ?', [interaction.user.id])
