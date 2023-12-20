@@ -55,12 +55,11 @@ const judge = {
                         password: process.env.DB_PASSWORD,
                         database: process.env.DB_DBNAME
                     }).catch(async error => {
-                        await dbConnection.end()
                         console.log(error.stack)
                         return {error: error}
                     })
                 
-                    if (dbConnection.error) return await interaction.channel.send(`Error connecting to the database. Contact <@${interaction.guild.ownerId}>`)
+                    if (dbConnection.error) return await interaction.reply(`Database connection error, contact <@${interaction.guild.ownerId}>`)
                     
                     //insert new players and assign crossyoff role
                     const [player1Query] = await dbConnection.execute('SELECT id FROM `Crossy Road Elo Rankings` WHERE `id` = ?', [player1ID])
