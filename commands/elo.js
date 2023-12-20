@@ -16,7 +16,6 @@ const elo = {
             password: process.env.DB_PASSWORD,
             database: process.env.DB_DBNAME
         }).catch(async error => {
-            await dbConnection.end()
             console.log(error.stack)
             return { error: error }
         })
