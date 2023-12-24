@@ -50,6 +50,8 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 	let createdChannel
 	let rulesEmbed
 
+	await dbConnection.end()
+
 	const embed = new EmbedBuilder()
 		.setColor("Yellow")
 		.setAuthor({
@@ -180,7 +182,6 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 		)
 
 	await createdChannel.send({content: `<@${challengerID}> <@${opponentID}>`, embeds: [rulesEmbed] })
-	await dbConnection.end()
 	return true
 }
 
