@@ -64,6 +64,8 @@ const judge = {
                     //insert new players and assign crossyoff role
                     const [player1Query] = await dbConnection.execute('SELECT id FROM `Crossy Road Elo Rankings` WHERE `id` = ?', [player1ID])
 	                const [player2Query] = await dbConnection.execute('SELECT id FROM `Crossy Road Elo Rankings` WHERE `id` = ?', [player2ID])
+                    await dbConnection.end()
+                    
                     if (player1Query.length === 0) {
                         await dbConnection.execute('INSERT INTO `Crossy Road Elo Rankings` (name, id) VALUES (?, ?)', [player1.user.username, player1ID])
                         await player1.member.roles.add(crossyoff)
@@ -138,7 +140,6 @@ const judge = {
                     await player1.member.roles.remove(playing)
                     await player2.member.roles.remove(playing)
                     await interaction.channel.delete({timeout: 1000})
-                    await dbConnection.end()
                 }
             } else {
                 await interaction.reply("You must be in a created challenge channel to use this command.")
