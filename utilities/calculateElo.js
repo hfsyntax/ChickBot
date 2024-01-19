@@ -18,9 +18,6 @@ function calculateProbability(r1, r2) {
  * @returns {void}
  */
 function calculateElo(a, b, result) {
-    let initial_a = a.elo
-    let initial_b = b.elo
-
     let a_prob = calculateProbability(b.elo, a.elo)
     let b_prob = calculateProbability(a.elo, b.elo)
     let kval_a = 40
@@ -40,11 +37,11 @@ function calculateElo(a, b, result) {
     else if (result == 0.5) {
         a.elo = a.elo + kval_a * (0.5 - a_prob)
         b.elo = b.elo + kval_b * (0.5 - b_prob)
-        b.won++
     }
     else {
         a.elo = a.elo + kval_a * (0 - a_prob)
         b.elo = b.elo + kval_b * (1 - b_prob)
+        b.won++
     }
 
     a.games++
