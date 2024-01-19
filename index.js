@@ -3,7 +3,7 @@ import path, { dirname } from 'path'
 import { fileURLToPath } from 'url'
 import { Client, Events, GatewayIntentBits, Collection } from 'discord.js'
 import 'dotenv/config'
-import keepAlive from './keep_alive.js'
+import keepAlive from './utilities/keep_alive.js'
 
 const client = new Client({
 	intents: [
@@ -63,5 +63,9 @@ for (const file of eventFiles) {
 		client.on(event.default.name, (...args) => event.default.execute(...args))
 	}
 }
+
+client.on('debug', (info) => {
+	console.log(`Debug: ${info}`)
+})
 
 client.login(process.env.TOKEN)
