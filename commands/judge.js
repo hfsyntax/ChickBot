@@ -1,6 +1,7 @@
 import { SlashCommandBuilder, EmbedBuilder, CommandInteraction } from 'discord.js'
 import mysql from 'mysql2/promise'
 import {calculateElo} from '../utilities/calculateElo.js'
+import {config} from 'dotenv'
 
 const judge = {
     data: new SlashCommandBuilder()
@@ -49,6 +50,7 @@ const judge = {
                 } else {
                     const challengeID = interaction.channel.name.split("-")[1]
                     await interaction.reply(`Attempting to judge challenge ID: ${challengeID}`)
+                    config({path: '../.env'})
                     const dbConnection = await mysql.createConnection({
                         host: process.env.DB_SERVERNAME,
                         user: process.env.DB_USERNAME,
@@ -64,7 +66,6 @@ const judge = {
                     //insert new players and assign crossyoff role
                     const [player1Query] = await dbConnection.execute('SELECT id FROM `Crossy Road Elo Rankings` WHERE `id` = ?', [player1ID])
 	                const [player2Query] = await dbConnection.execute('SELECT id FROM `Crossy Road Elo Rankings` WHERE `id` = ?', [player2ID])
-                    await dbConnection.end()
                     
                     if (player1Query.length === 0) {
                         await dbConnection.execute('INSERT INTO `Crossy Road Elo Rankings` (name, id) VALUES (?, ?)', [player1.user.username, player1ID])
@@ -80,7 +81,7 @@ const judge = {
 	                const [player2Data] = await dbConnection.execute('SELECT * FROM `Crossy Road Elo Rankings` WHERE `id` = ?', [player2ID])
                     const initalPlayer1Elo = player1Data[0].elo
                     const initalPlayer2Elo = player2Data[0].elo
-                    let winnerID = 0
+                    let winnerID = 0 // in case there's a tie
                     //calculate elo based on score
                     if (score1 > score2) {
                         calculateElo(player1Data[0], player2Data[0], 1)
@@ -96,50 +97,50 @@ const judge = {
                     await dbConnection.execute('UPDATE `Crossy Road Elo Rankings` SET `elo` = ?, games = ?, won = ? WHERE `id` = ?', [player1Data[0].elo, player1Data[0].games, player1Data[0].won,  player1ID])
                     await dbConnection.execute('UPDATE `Crossy Road Elo Rankings` SET `elo` = ?, games = ?, won = ? WHERE `id` = ?', [player2Data[0].elo, player2Data[0].games, player2Data[0].won, player2ID])
                     
-                    //convert player1/player2 params to challenger/oppoent
+                    //convert player1/player2 params to challenger/opponent
                     const challengeMessage = await challengeLog.messages.fetch(challengeID)
                     const challengerID = challengeMessage.embeds[0].data.author.name.match(/<(.*?)>/)[1]
-                    const challenerName = challengerID === player1ID ? player1Data[0].name : player2Data[0].name
-                    const challengerPlayed = challengerID === player1ID ? player1Data[0].games : player2Data[0].games
-                    const challengerWon = challengerID === player1ID ? player1Data[0].won : player2Data[0].won
+                    const challenger = challengerID === player1ID ? player1Data[0] : player2Data[0]
+                    const challenerName = challenger.name
+                    const challengerPlayed = challenger.games
                     const challengerInitalElo = challengerID === player1ID ? initalPlayer1Elo : initalPlayer2Elo
-                    const challengerFinalElo = challengerID === player1ID ? player1Data[0].elo : player2Data[0].elo
+                    const challengerFinalElo = challenger.elo
                     const challengerScore = challengerID === player1ID ? score1 : score2
-                    const challengerResult = winnerID === challengeID ? "Won" : "Lost"
+                    const challengerResult = winnerID === 0 ? "Tie" :  winnerID === challengerID ? "Won" : "Lost"
+                    const opponent = challenger === player1Data[0] ? player2Data[0] : player1Data[0]
                     const opponentID = challengerID !== player1ID ? player1ID : player2ID
-                    const opponentName = challengerID !== player1ID ? player1Data[0].name : player2Data[0].name
-                    const opponentPlayed = challengerID !== player1ID ? player1Data[0].games : player2Data[0].games
-                    const opponentWon = challengerID !== player1ID ? player1Data[0].won : player2Data[0].won
+                    const opponentName = opponent.name
+                    const opponentPlayed = opponent.games
                     const opponentInitalElo = challengerID !== player1ID ? initalPlayer1Elo : initalPlayer2Elo
-                    const opponentFinalElo = challengerID !== player1ID ? player1Data[0].elo : player2Data[0].elo
+                    const opponentFinalElo = opponent.elo
                     const opponentScore = challengerID !== player1ID ? score1 : score2
-                    const opponentResult = winnerID === opponentID ? "Won" : "Lost"
+                    const opponentResult = winnerID === 0 ? "Tie" : winnerID === opponentID ? "Won" : "Lost"
                     
-                    //insert rows in crossy road challenges
-                    const fields = "challenger_id, opponent_id, winner_id, challenger_initial_elo, challenger_final_elo, challenger_score, opponent_initial_elo, opponent_final_elo, opponent_score"
-                    await dbConnection.execute(`INSERT INTO \`Crossy Road Challenges\` (${fields}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, [challengerID, opponentID, winnerID, challengerInitalElo, challengerFinalElo, challengerScore, opponentInitalElo, opponentFinalElo, opponentScore])
+                    //update row in crossy road challenges
+                    await dbConnection.execute(`UPDATE \`Crossy Road Challenges\` SET winner_id = ?, challenger_final_elo = ?, challenger_score = ?, opponent_final_elo = ?, opponent_score = ? WHERE message_id = ?`, [winnerID, challengerFinalElo, challengerScore, opponentFinalElo, opponentScore, challengeID])
                     //update all player ranks
                     await dbConnection.execute("SET @rank = 0;")
                     await dbConnection.execute("UPDATE `Crossy Road Elo Rankings` SET rank = (@rank := @rank + 1) ORDER BY elo DESC;");
 
-                    //send log to challenge-logs with data changes
-                    const embed = new EmbedBuilder()
-                    .setColor("Orange")
-                    .setAuthor({
-                        name: `Referee: ${interaction.user.username} <${interaction.user.id}>`,
-                        iconURL: interaction.user.avatarURL() ? interaction.user.avatarURL() : interaction.user.defaultAvatarURL
-                    })
-                    .addFields(
-                        { name: `Challenger (${challengerResult})`, value: `${challenerName} (${challengerInitalElo}-${challengerFinalElo}) Played: ${challengerPlayed} Won: ${challengerWon} Score: ${challengerScore}` },
-                        { name: `Opponent (${opponentResult})`, value: `${opponentName} (${opponentInitalElo}-${opponentFinalElo}) Played: ${opponentPlayed} Won: ${opponentWon} Score: ${opponentScore}` },
-                    )
-                    .setTimestamp()
-                    .setFooter({text: `challenge ID: ${challengeID}`})
-                    await challengeMessage.delete({timeout: 1000})
-                    await challengeLog.send({embeds: [embed]})
+                    //update log to challenge-logs with data changes
+                    challengeMessage.embeds[0].data.color = 12745742
+                    challengeMessage.embeds[0].data.author.name = `${interaction.user.username} <${interaction.user.id}>`
+                    challengeMessage.embeds[0].data.author.icon_url = interaction.user.displayAvatarURL()
+                    challengeMessage.embeds[0].data.fields[0].name = `Challenger (${challengerResult})`
+                    challengeMessage.embeds[0].data.fields[0].value = `${challenerName} (${challengerScore})`
+                    challengeMessage.embeds[0].data.fields[1].value = `${challengerInitalElo}-${challengerFinalElo}`
+                    challengeMessage.embeds[0].data.fields[2].value = `${challengerPlayed}`
+                    challengeMessage.embeds[0].data.fields[3].name = `Opponent (${opponentResult})`
+                    challengeMessage.embeds[0].data.fields[3].value = `${opponentName} (${opponentScore})`
+                    challengeMessage.embeds[0].data.fields[4].value = `${opponentInitalElo}-${opponentFinalElo}`
+                    challengeMessage.embeds[0].data.fields[5].value = `${opponentPlayed}`
+                    challengeMessage.embeds[0].data.footer.text = `Finished challenge ID: ${challengeID}`
+                    
+                    await challengeMessage.edit({embeds: [challengeMessage.embeds[0]], components: []})
                     await player1.member.roles.remove(playing)
                     await player2.member.roles.remove(playing)
                     await interaction.channel.delete({timeout: 1000})
+                    await dbConnection.end()
                 }
             } else {
                 await interaction.reply("You must be in a created challenge channel to use this command.")
