@@ -1,5 +1,6 @@
 import { SlashCommandBuilder, EmbedBuilder } from 'discord.js'
 import mysql from 'mysql2/promise'
+import {config} from 'dotenv'
 
 const elo = {
     data: new SlashCommandBuilder()
@@ -10,6 +11,8 @@ const elo = {
                 .setDescription('The user to lookup.')
                 .setRequired(true)),
     async execute(interaction) {
+        config({path: '../.env'})
+        
         const dbConnection = await mysql.createConnection({
             host: process.env.DB_SERVERNAME,
             user: process.env.DB_USERNAME,
@@ -39,6 +42,7 @@ const elo = {
         } else {
             await interaction.reply("no results found.")
         }
+        await dbConnection.end()
     }
 }
 
