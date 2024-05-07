@@ -1,5 +1,6 @@
-import { SlashCommandBuilder, EmbedBuilder } from 'discord.js'
-
+import { SlashCommandBuilder, EmbedBuilder, ActionRow } from 'discord.js'
+import { config } from 'dotenv'
+import mysql from 'mysql2/promise'
 const cancel = {
     data: new SlashCommandBuilder()
         .setName("cancel")
@@ -25,7 +26,7 @@ const cancel = {
                 { name: 'Reason:', value: reason ? reason.value : "no reason specified" }
             )
 
-        // challenge and not challenge lobby
+        // created challenge channel and not challenge lobby
         if (interaction.channel.name.includes("challenge") && interaction.channel.id !== challengeLobbyID) {
             if (interaction.member.roles.cache.has(referee)) {
                 const challengeID = interaction.channel.name.split("-")[1]
@@ -37,6 +38,21 @@ const cancel = {
                 } else {
                     const challenger = interaction.channel.members.get(challengerID)
                     const opponent = interaction.channel.members.get(opponentID)
+                    // delete challenge record from server
+                    config({ path: '../.env' })
+                    const dbConnection = await mysql.createConnection({
+                        host: process.env.DB_SERVERNAME,
+                        user: process.env.DB_USERNAME,
+                        password: process.env.DB_PASSWORD,
+                        database: process.env.DB_DBNAME
+                    }).catch(async error => {
+                        console.log(error.stack)
+                        return { error: error }
+                    })
+                
+                    if (dbConnection.error) return await interaction.reply(`Database connection error, contact <@${interaction.guild.ownerId}>`)
+                    await dbConnection.execute('DELETE FROM `Crossy Road Challenges` WHERE `message_id` = ?', [challengeID])
+                    await dbConnection.end()
                     //check in case either leaves the server
                     if (challenger)
                         await challenger.roles.remove(playing)
@@ -51,6 +67,7 @@ const cancel = {
                 await interaction.reply("You cannot cancel a challenge you are already playing.")
             }
         } else {
+            // cancelling from any channel
             if (interaction.member.roles.cache.has(playing)) {
                 await interaction.reply("You cannot cancel a challenge when you are already playing.")
             }
@@ -60,16 +77,35 @@ const cancel = {
                 embed.setFooter({ text: "Cancelled qeue for challenge" })
                 await challengeLog.send({ embeds: [embed] })
             } else {
+                // cancel the first pending challenge
                 const messages = await challengeLog.messages.fetch({ limit: 30 })
-                const challenge = messages.filter(m =>
+                const challenges = messages.filter(m =>
                     m.embeds.length === 1 &&
                     m.embeds[0].data.author.name &&
                     m.embeds[0].data.author.name.split('<')[1].split('>')[0]
                     === interaction.member.id &&
-                    m.reactions.cache.size > 0
+                    m.components.length > 0 &&
+                    m.components[0] instanceof ActionRow
                 )
-                if (challenge.size > 0) {
-                    embed.setFooter({ text: `Cancelled challenge ID: ${challenge.first().id}` })
+                if (challenges.size > 0) {
+                    const challenge = challenges.first()
+                    // delete challenge id from database before logging to #challenge-logs 
+                    config({ path: '../.env' })
+                    const dbConnection = await mysql.createConnection({
+                        host: process.env.DB_SERVERNAME,
+                        user: process.env.DB_USERNAME,
+                        password: process.env.DB_PASSWORD,
+                        database: process.env.DB_DBNAME
+                    }).catch(async error => {
+                        console.log(error.stack)
+                        return { error: error }
+                    })
+                
+                    if (dbConnection.error) return await interaction.reply(`Database connection error, contact <@${interaction.guild.ownerId}>`)
+                    await dbConnection.execute('DELETE FROM `Crossy Road Challenges` WHERE `message_id` = ?', [challenge.id])
+                    await dbConnection.end()
+                    await challenge.delete({timeout: 1000})
+                    embed.setFooter({ text: `Cancelled challenge ID: ${challenge.id}` })
                     await challengeLog.send({ embeds: [embed] })
                     await interaction.reply("Sucessfully cancelled your challenge.")
                 } else {
