@@ -1,5 +1,7 @@
-import { SlashCommandBuilder, EmbedBuilder, ChannelType, PermissionFlagsBits, CommandInteraction, GuildMember, TextChannel } from 'discord.js'
+import { SlashCommandBuilder, EmbedBuilder, ButtonBuilder, PermissionFlagsBits, CommandInteraction, GuildMember, TextChannel, ButtonStyle, ActionRowBuilder, ActionRow, ComponentType } from 'discord.js'
 import mysql from 'mysql2/promise'
+import { config } from 'dotenv'
+import { handleChallengeCollector, startChallenge } from '../utilities/helper_functions.js'
 
 /**
  * Creates a match request for a challenger and opponent.
@@ -14,6 +16,7 @@ import mysql from 'mysql2/promise'
  * @throws {Error} If there is an error associated with mysql2 or if there is a Discord API error.
  */
 async function createMatchRequest(interaction, opponent, challengeLog, playing, queued, queuedMatch) {
+	config({ path: '../.env' })
 
 	const dbConnection = await mysql.createConnection({
 		host: process.env.DB_SERVERNAME,
@@ -33,156 +36,69 @@ async function createMatchRequest(interaction, opponent, challengeLog, playing, 
 	const challengerName = challengerData.length > 0 ? challengerData[0].name : interaction.user.username
 	const challengerElo = challengerData.length > 0 ? challengerData[0].elo : 1200
 	const challengerGames = challengerData.length > 0 ? challengerData[0].games : 0
-	const challengerWon = challengerData.length > 0 ? challengerData[0].won : 0
 	const challengerID = interaction.user.id
 	const challengerAvatar = interaction.user.avatarURL()
 	const challengerDefaultAvatar = interaction.user.defaultAvatarURL
 	const opponentName = opponentData.length > 0 ? opponentData[0].name : opponent.user.username
 	const opponentElo = opponentData.length > 0 ? opponentData[0].elo : 1200
 	const opponentGames = opponentData.length > 0 ? opponentData[0].games : 0
-	const opponentWon = opponentData.length > 0 ? opponentData[0].won : 0
 	const opponentID = opponent.user.id
-	const everyone = "600865413890310155"
-	const refs = "799505175541710848"
 	let sentEmbed
-	let reactionCollector
-	let reaction
-	let createdChannel
-	let rulesEmbed
-
-	await dbConnection.end()
 
 	const embed = new EmbedBuilder()
 		.setColor("Yellow")
 		.setAuthor({
-			name: `${challengerName} <${challengerID}> (${challengerElo}) Played: ${challengerGames} Won: ${challengerWon}`,
+			name: `${interaction.user.username} <${challengerID}>`,
 			iconURL: challengerAvatar ? challengerAvatar : challengerDefaultAvatar
 		})
-		.setDescription(`Challenging ${opponentName} <${opponentID}> (${opponentElo}) Played: ${opponentGames} Won: ${opponentWon}`)
+		.addFields(
+			{ name: "Challenger", value: challengerName, inline: true },
+			{ name: "Elo", value: `${challengerElo}`, inline: true },
+			{ name: "Played", value: `${challengerGames}`, inline: true },
+			{ name: "Opponent", value: opponentName, inline: true },
+			{ name: "Elo", value: `${opponentElo}`, inline: true },
+			{ name: "Played", value: `${opponentGames}`, inline: true }
+		)
 		.setTimestamp()
 
 	if (!queuedMatch) {
 		sentEmbed = await challengeLog.send({ content: `<@${opponentID}>`, embeds: [embed] })
-		await sentEmbed.react("👍")
-		await sentEmbed.react("👎")
 
-		const collectorFilter = (reaction, user) => {
-			return ['👍', '👎'].includes(reaction.emoji.name) && user.id === opponentID;
-		}
+		// create the buttons for the embed
+		const acceptButton = new ButtonBuilder()
+			.setCustomId('accept')
+			.setLabel('Accept')
+			.setStyle(ButtonStyle.Success)
 
-		embed.setFooter({ text: `challenge ID: ${sentEmbed.id}` })
-		await sentEmbed.edit({ embeds: [embed] })
-		reactionCollector = await sentEmbed.awaitReactions({ filter: collectorFilter, max: 1, time: 3600000, errors: ['time'] }).catch(async error => {
-			embed.setColor("Red")
-			embed.setFooter({text: `Cancelled challenge ID: ${sentEmbed.id}`})
-			embed.addFields(
-				{ name: 'Reason:', value: "opponent did not respond in time" }
-			)
-			await sentEmbed.delete({ timeout: 1000 })
-			await challengeLog.send({ content: `<@${challengerID}>`, embeds: [embed] })
-			console.log(error)
-			return { error: error }
+		const rejectButton = new ButtonBuilder()
+			.setCustomId('reject')
+			.setLabel('Reject')
+			.setStyle(ButtonStyle.Danger)
+
+		const row = new ActionRowBuilder()
+			.addComponents(acceptButton, rejectButton);
+
+		const filter = (i) => i.user.id === opponentID
+		const collector = sentEmbed.createMessageComponentCollector({
+			componentType: ComponentType.Button,
+			filter,
+			time: 3600000, // 1 hour to respond
+			max: 1
 		})
 
-		// no reaction in time
-		if (reactionCollector.error) return false
+		embed.setFooter({ text: `challenge ID: ${sentEmbed.id}` })
+		await sentEmbed.edit({ embeds: [embed], components: [row] })
 
-		reaction = reactionCollector.first()
-
-		// challenge cancelled before expiration
-		if (!reaction) return false
-
-		if (reaction.emoji.name === '👍') {
-			if (opponent.roles.cache.has(playing)) {
-				embed.setColor("Red")
-				embed.setFooter({text: `Cancelled challenge ID: ${sentEmbed.id}`})
-				embed.addFields(
-					{ name: 'Reason:', value: "opponent is already playing" }
-				)
-				await sentEmbed.delete({ timeout: 1000 })
-				await challengeLog.send({ content: `<@${challengerID}>`, embeds: [embed] })
-				return false
-			} else if (interaction.member.roles.cache.has(playing)) {
-				embed.setColor("Red")
-				embed.setFooter({text: `Cancelled challenge ID: ${sentEmbed.id}`})
-				embed.addFields(
-					{ name: 'Reason:', value: "challenger is already playing" }
-				)
-				await sentEmbed.delete({ timeout: 1000 })
-				await challengeLog.send({ content: `<@${opponentID}>`, embeds: [embed] })
-				return false
-			}
-		} else if (reaction.emoji.name === '👎') {
-			embed.setColor("Red")
-			embed.setFooter({text: `Cancelled challenge ID: ${sentEmbed.id}`})
-			embed.addFields(
-				{ name: 'Reason:', value: "opponent rejected challenge" }
-			)
-			await sentEmbed.delete({ timeout: 1000 })
-			await challengeLog.send({ content: `<@${challengerID}>`, embeds: [embed] })
-			return false
-		}
-	} else {
-		sentEmbed = await challengeLog.send({ embeds: [embed] })
+		// store challege collector data in case bot restarts
+		const fields = "created, message_id, challenger_id, opponent_id, winner_id, challenger_initial_elo, challenger_final_elo, challenger_score, opponent_initial_elo, opponent_final_elo, opponent_score"
+		await dbConnection.execute(`INSERT INTO \`Crossy Road Challenges\` (${fields}) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`, [sentEmbed.createdTimestamp, sentEmbed.id, challengerID, opponentID, 0, challengerElo, challengerElo, 0, opponentElo, opponentElo, 0])
+		// for non-queued match, call startChallenge in collector if button accepted
+		handleChallengeCollector(sentEmbed, interaction.member, collector)
+	} else { // queued match call startChallenge immediately...
+		sentEmbed = await challengeLog.send({ content: `<@${opponentID}>`, embeds: [embed] })
+		await startChallenge(sentEmbed, opponent, interaction)
 	}
-
-	embed.setTimestamp()
-	embed.setFooter({ text: `Started challenge ID: ${sentEmbed.id}` })
-	await sentEmbed.edit({ embeds: [embed] })
-	await sentEmbed.reactions.removeAll()
-
-	//create channel for match
-	createdChannel = await interaction.guild.channels.create({
-		name: `Challenge-${sentEmbed.id}`,
-		type: ChannelType.GuildText,
-		parent: "1171570995056881704",
-		permissionOverwrites: [
-			{
-				id: everyone,
-				deny: [PermissionFlagsBits.ViewChannel],
-			},
-			{
-				id: interaction.client.user.id,
-				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages, PermissionFlagsBits.EmbedLinks]
-			},
-			{
-				id: refs,
-				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
-			},
-			{
-				id: opponent.user.id,
-				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
-			},
-			{
-				id: interaction.user.id,
-				allow: [PermissionFlagsBits.ViewChannel, PermissionFlagsBits.SendMessages],
-			},
-		]
-	})
-
-	if (interaction.member.roles.cache.has(queued)) {
-		await interaction.member.roles.remove(queued)
-	}
-
-	if (opponent.roles.cache.has(queued)) {
-		await opponent.roles.remove(queued)
-	}
-
-	await interaction.member.roles.add(playing)
-	await opponent.roles.add(playing)
-
-	rulesEmbed = new EmbedBuilder()
-		.setColor("Blue")
-		.setTitle("CrossyOff Challenge Rules")
-		.setDescription("Rules: <https://crossyoff.rf.gd/rules/challenges.html>")
-		.setFooter({ text: `challenge ID: ${sentEmbed.id} When finished ping @Referee` })
-		.setTimestamp()
-		.addFields(
-			{ name: 'Important Rule Highlights', value: "- all runs must be streamed and have a savable link\n- do not open Crossy Road until after stream has started\n- use /run before each run" }
-		)
-
-	await createdChannel.send({content: `<@${challengerID}> <@${opponentID}>`, embeds: [rulesEmbed] })
-	return true
+	await dbConnection.end()
 }
 
 const challenge = {
@@ -197,40 +113,64 @@ const challenge = {
 		let opponent = interaction.options.get("opponent")
 		const playing = "1172359960559108116"
 		const queued = "1172360108307644507"
-		if (interaction.member.roles.cache.has(playing) || interaction.member.roles.cache.has(queued)) {
-			await interaction.reply("You are already queued/playing a challenge.")
-		} else if (opponent) {
-			if (opponent.user.id === interaction.user.id) {
-				await interaction.reply("You cannot challenge yourself.")
-			} else if (opponent.member.roles.cache.has(playing)) {
-				await interaction.reply(`${opponent.user.username} is already in a challenge.`)
-			} else if (opponent.user.bot) {
-				await interaction.reply("You cannot challenge a bot")
+		const challengeLobbyID = "1175955527688278016"
+		if (interaction.channel.id === challengeLobbyID || interaction.channel.name === "development") {
+			if (interaction.member.roles.cache.has(playing) || interaction.member.roles.cache.has(queued)) {
+				await interaction.reply("You are already queued/playing a challenge.")
+			} else if (opponent) {
+				if (opponent.user.id === interaction.user.id) {
+					await interaction.reply("You cannot challenge yourself.")
+				} else if (opponent.member.roles.cache.has(playing) || opponent.member.roles.cache.has(queued)) {
+					await interaction.reply(`${opponent.user.username} is already in a queue/challenge.`)
+				} else if (opponent.user.bot) {
+					await interaction.reply("You cannot challenge a bot")
+				} else {
+					await interaction.reply(`Attempting to create a challenge request in <#${challengeLog.id}>.`)
+					await createMatchRequest(interaction, opponent, challengeLog, playing, queued, false)
+				}
 			} else {
-				await interaction.reply(`Attempting to create a challenge request in <#${challengeLog.id}>.`)
-				await createMatchRequest(interaction, opponent, challengeLog, playing, queued, false)
+				// ensure the player has no pending challenges before adding to queue
+				const challengeLog = interaction.guild.channels.cache.get("1171571198023442535")
+				const messages = await challengeLog.messages.fetch({ limit: 30 })
+				const challenges = messages.filter(m =>
+					m.embeds.length === 1 &&
+					m.embeds[0].data.author.name &&
+					m.embeds[0].data.author.name.split('<')[1].split('>')[0]
+					=== interaction.member.id &&
+					m.components.length > 0 &&
+					m.components[0] instanceof ActionRow
+				)
+				if (challenges.size > 0) {
+					await interaction.reply("Cancel your challenge request before joining the queue.")
+				} else {
+					const waiting = interaction.guild.roles.cache.get(queued)
+					if (waiting.members.size < 1) {
+						
+							await interaction.reply("You've been added to the queue of players waiting for a challenge.")
+							await interaction.member.roles.add(queued)
+							const embed = new EmbedBuilder()
+								.setColor("Grey")
+								.setAuthor({
+									name: `${interaction.user.username} <${interaction.user.id}>`,
+									iconURL: interaction.user.avatarURL() ? interaction.user.avatarURL() : interaction.user.defaultAvatarURL
+								})
+								.setFooter({ text: "Qeued for challenge" })
+								.setTimestamp()
+							await challengeLog.send({ embeds: [embed] })
+						
+						
+					} else {
+						opponent = waiting.members.first()
+						await interaction.reply(`You've been matched against ${opponent.user.username} see: <#${challengeLog.id}>.`)
+						await opponent.roles.remove(queued)
+						await createMatchRequest(interaction, opponent, challengeLog, playing, queued, true)
+					}
+				}
 			}
 		} else {
-			const waiting = interaction.guild.roles.cache.get(queued)
-			if (waiting.members.size < 1) {
-				await interaction.reply("You've been added to the queue of players waiting for a challenge.")
-				await interaction.member.roles.add(queued)
-				const embed = new EmbedBuilder()
-					.setColor("Grey")
-					.setAuthor({
-						name: `${interaction.user.username} <${interaction.user.id}>`,
-						iconURL: interaction.user.avatarURL() ? interaction.user.avatarURL() : interaction.user.defaultAvatarURL
-					})
-					.setFooter({ text: "Qeued for challenge" })
-					.setTimestamp()
-				await challengeLog.send({ embeds: [embed] })
-			} else {
-				opponent = waiting.members.first()
-				await interaction.reply(`You've been matched against ${opponent.user.username} see: <#${challengeLog.id}>.`)
-				await opponent.roles.remove(queued)
-				await createMatchRequest(interaction, opponent, challengeLog, playing, queued, true)
-			}
+			await interaction.reply(`You must be in <#${challengeLobbyID}> to use this command.`)
 		}
+
 	}
 }
 
