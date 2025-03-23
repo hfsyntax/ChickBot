@@ -30,10 +30,9 @@ const client = new Client({
 const commands = new Collection<string, Command>()
 const __dirname = dirname(fileURLToPath(import.meta.url))
 const commandsPath = path.join(__dirname, "commands")
-console.log(commandsPath)
 const commandFiles = fs
   .readdirSync(commandsPath)
-  .filter((file) => file.endsWith(".ts"))
+  .filter((file) => file.endsWith(".ts") || file.endsWith(".js"))
 for (const file of commandFiles) {
   const command: { default: Command } = await import(`./commands/${file}`)
   console.log(`imported command file: ${file}`)
@@ -84,7 +83,7 @@ app.listen(port, async () => {
   const eventsPath = path.join(__dirname, "events")
   const eventFiles = fs
     .readdirSync(eventsPath)
-    .filter((file) => file.endsWith(".ts"))
+    .filter((file) => file.endsWith(".ts") || file.endsWith(".js"))
 
   for (const file of eventFiles) {
     const event = await import(`./events/${file}`)
