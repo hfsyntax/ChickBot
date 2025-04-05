@@ -65,17 +65,31 @@ const rankings = {
         )
     ),
   async execute(interaction: ChatInputCommandInteraction) {
+    if (!interaction.inCachedGuild() || !interaction.channel?.isSendable())
+      return
     const category = interaction.options.get("category")?.value as string
     const platform = interaction.options.get("platform")?.value as string
-    await interaction.reply(
-      `Fetching top 5 speedrun players for ${category} ${platform}, please be patient.`
-    )
+    await interaction.reply({
+      content: `Fetching top 5 speedrun players for ${category} ${platform}, please be patient.`,
+      flags: "Ephemeral",
+    })
     const response = await fetch(
       `https://www.speedrun.com/api/v1/leaderboards/j1n29w1p/category/${getData(
         [category, platform].join(" ")
       )}`
     )
     const apiData = (await response.json()) as SpeedrunRankings
+
+    if (
+      apiData.status === 404 ||
+      !apiData.data ||
+      apiData.data.runs.length < 5
+    ) {
+      return await interaction.followUp({
+        content: "The category doesn't exist or is there is not enough data.",
+      })
+    }
+
     let content = ""
     for (let run = 0; run < 5; run++) {
       const rank = apiData.data.runs[run].place
@@ -101,8 +115,7 @@ const rankings = {
       )
       .setFooter({ text: `Retrieved from speedrun.com/crossy` })
       .setTimestamp()
-    interaction?.channel?.isSendable() &&
-      (await interaction?.channel?.send({ embeds: [embed] }))
+    await interaction.followUp({ embeds: [embed], flags: "Ephemeral" })
   },
 }
 

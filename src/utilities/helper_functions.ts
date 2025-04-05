@@ -52,7 +52,7 @@ function handleRunsCollector(
     if (!interactor.channel?.isSendable()) return
     // only send interaction reply once
     if (!interactor.replied || interactor.deferred) {
-      await interactor.reply({ content: "foobar" })
+      await interactor.reply({ content: "foobar", flags: "Ephemeral" })
       await interactor.deleteReply()
     }
 
@@ -211,16 +211,19 @@ function handleRunsCollector(
 function handleChallengeCollector(
   sentEmbed: Message,
   challenger: GuildMember,
-  collector: InteractionCollector<any>
+  collector:
+    | InteractionCollector<ButtonInteraction>
+    | InteractionCollector<ButtonInteraction<"cached">>
 ) {
   const challengeEmbedBuilder = new EmbedBuilder(sentEmbed.embeds[0].data)
 
-  collector.on("collect", async (interactor) => {
+  collector.on("collect", async (interactor: ButtonInteraction) => {
+    if (!interactor.inCachedGuild() || !interactor.channel) return
     const playing = "1172359960559108116"
 
     // only send interaction reply once
     if (!interactor.replied || interactor.deferred) {
-      await interactor.reply({ content: "foobar" })
+      await interactor.reply({ content: "foobar", flags: "Ephemeral" })
       await interactor.deleteReply()
     }
 
@@ -326,7 +329,7 @@ function handleChallengeCollector(
 async function startChallenge(
   sentEmbed: Message,
   challenger: GuildMember,
-  interaction: CommandInteraction
+  interaction: CommandInteraction | ButtonInteraction
 ) {
   if (!interaction.inCachedGuild()) return
   const challengeEmbedBuilder = new EmbedBuilder(sentEmbed.embeds[0].data)

@@ -111,6 +111,7 @@ interface SpeedrunRankings {
       }[]
     }
   }
+  status?: number
 }
 
 interface SpeedrunRecordsRun {

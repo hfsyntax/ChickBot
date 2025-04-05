@@ -61,9 +61,10 @@ const cancel = {
           : undefined
 
         if (!challengeEmbed) {
-          return await interaction.reply(
-            "Cannot cancel the challenge since the challenge embed in #challenge-logs does not exist. Contact: <@254643053548142595>"
-          )
+          return await interaction.reply({
+            content:
+              "Cannot cancel the challenge since the challenge embed in #challenge-logs does not exist. Contact: <@254643053548142595>",
+          })
         }
 
         const challengerID = challengeEmbed.embeds?.[0].data.author?.name
@@ -76,9 +77,10 @@ const cancel = {
           interaction.member.id === challengerID ||
           interaction.member.id === opponentID
         ) {
-          await interaction.reply(
-            "You cannot cancel a challenge you are already playing."
-          )
+          await interaction.reply({
+            content: "You cannot cancel a challenge you are already playing.",
+            flags: "Ephemeral",
+          })
         } else {
           const challenger = challengerID
             ? interaction.channel.members.get(challengerID)
@@ -96,7 +98,7 @@ const cancel = {
             )
 
           if (!deleteChallengeQuery) {
-            return await interaction.channel.send({
+            return await interaction.reply({
               content: `Failed to delete challenge data. Contact: <@254643053548142595>`,
             })
           }
@@ -112,27 +114,33 @@ const cancel = {
           })
 
           await challengeLog.send({ embeds: [embed] })
-          await interaction.reply(
-            `Sucessfully cancelled challenge ID: ${challengeID}.`
-          )
+          await interaction.reply({
+            content: `Sucessfully cancelled challenge ID: ${challengeID}.`,
+            flags: "Ephemeral",
+          })
           await interaction.channel.delete()
         }
       } else {
-        await interaction.reply(
-          "You cannot cancel a challenge you are already playing."
-        )
+        await interaction.reply({
+          content: "You cannot cancel a challenge you are already playing.",
+          flags: "Ephemeral",
+        })
       }
     } else {
       // cancelling from any channel
       if (interaction.member.roles.cache.has(playing)) {
-        await interaction.reply(
-          "You cannot cancel a challenge when you are already playing."
-        )
+        await interaction.reply({
+          content:
+            "You cannot cancel a challenge when you are already playing.",
+          flags: "Ephemeral",
+        })
       } else if (interaction.member.roles.cache.has(queued)) {
         await interaction.member.roles.remove(queued)
-        await interaction.reply(
-          "You've been removed from the queue of players waiting for a challenge."
-        )
+        await interaction.reply({
+          content:
+            "You've been removed from the queue of players waiting for a challenge.",
+          flags: "Ephemeral",
+        })
         embed.setFooter({ text: "Cancelled qeue for challenge" })
         await challengeLog.send({ embeds: [embed] })
       } else {
@@ -160,7 +168,7 @@ const cancel = {
               )
 
             if (!deleteChallengeQuery) {
-              return await interaction.channel.send({
+              return await interaction.reply({
                 content: `Database connection error contact: <@254643053548142595>`,
               })
             }
@@ -169,11 +177,16 @@ const cancel = {
           }
           await challenge?.delete()
           await challengeLog.send({ embeds: [embed] })
-          await interaction.reply("Sucessfully cancelled your challenge.")
+          await interaction.reply({
+            content: "Sucessfully cancelled your challenge.",
+            flags: "Ephemeral",
+          })
         } else {
-          await interaction.reply(
-            "You have not created a challenge and you are not in a queue."
-          )
+          await interaction.reply({
+            content:
+              "You have not created a challenge and you are not in a queue.",
+            flags: "Ephemeral",
+          })
         }
       }
     }

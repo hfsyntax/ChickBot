@@ -147,7 +147,10 @@ const run = {
       ) {
         createRun(interaction)
       } else {
-        await interaction.reply("Only players can request runs.")
+        await interaction.reply({
+          content: "Only players can request runs.",
+          flags: "Ephemeral",
+        })
       }
       // for lcs
     } else if (
@@ -156,9 +159,11 @@ const run = {
     ) {
       createRun(interaction)
     } else {
-      await interaction.reply(
-        "You must be in a challenge or in #lcs-runs to use this command."
-      )
+      await interaction.reply({
+        content:
+          "You must be in a challenge or in #lcs-runs to use this command.",
+        flags: "Ephemeral",
+      })
     }
   },
 }

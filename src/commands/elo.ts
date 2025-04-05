@@ -25,7 +25,7 @@ const elo = {
     if (userId) {
       const userEloDataQuery = await sql<
         Array<PlayerData>
-      >`SELECT elo, rank, games, won FROM crossy_road_elo_rankings where id = ${userId}`.catch(
+      >`SELECT name, elo, rank, games, won FROM crossy_road_elo_rankings where id = ${userId}`.catch(
         (error: Error) => {
           console.error(error)
           return null
@@ -48,9 +48,10 @@ const elo = {
         userEloData.games &&
         userEloData.won
       ) {
-        await interaction.reply(
-          `Fetching elo for ${user?.user?.username} please be patient.`
-        )
+        await interaction.reply({
+          content: `Fetching elo for ${user?.user?.username} please be patient.`,
+          flags: "Ephemeral",
+        })
 
         const avatar = user.user?.avatarURL()
         const embed = new EmbedBuilder()
@@ -65,9 +66,15 @@ const elo = {
           })
           .setTimestamp()
           .setFooter({ text: `Retrieved from crossyoff.vercel.app` })
-        return await interaction.channel.send({ embeds: [embed] })
+        return await interaction.followUp({
+          embeds: [embed],
+          flags: "Ephemeral",
+        })
       } else {
-        return await interaction.reply({ content: "user not found" })
+        return await interaction.reply({
+          content: "user not found",
+          flags: "Ephemeral",
+        })
       }
     }
   },

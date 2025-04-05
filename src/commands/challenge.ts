@@ -21,7 +21,6 @@ import {
   handleChallengeCollector,
   startChallenge,
 } from "../utilities/helper_functions.js"
-import { error } from "console"
 
 /**
  * Creates a match request for a challenger and opponent.
@@ -196,9 +195,10 @@ const challenge = {
     ) as TextChannel | undefined
 
     if (!challengeLog) {
-      return await interaction.reply(
-        "The challenge log channel does not exist. Contact: @<254643053548142595>"
-      )
+      return await interaction.reply({
+        content:
+          "The challenge log channel does not exist. Contact: @<254643053548142595>",
+      })
     }
 
     let opponent = interaction.options.get("opponent")?.member
@@ -214,25 +214,34 @@ const challenge = {
         interaction.member.roles.cache.has(playing) ||
         interaction.member.roles.cache.has(queued)
       ) {
-        return await interaction.reply(
-          "You are already queued/playing a challenge."
-        )
+        return await interaction.reply({
+          content: "You are already queued/playing a challenge.",
+          flags: "Ephemeral",
+        })
       } else if (opponent) {
         if (opponent?.user?.id === interaction.user.id) {
-          return await interaction.reply("You cannot challenge yourself.")
+          return await interaction.reply({
+            content: "You cannot challenge yourself.",
+            flags: "Ephemeral",
+          })
         } else if (
           opponent.roles.cache.has(playing) ||
           opponent.roles.cache.has(queued)
         ) {
-          return await interaction.reply(
-            `${opponent.user.username} is already in a queue/challenge.`
-          )
+          return await interaction.reply({
+            content: `${opponent.user.username} is already in a queue/challenge.`,
+            flags: "Ephemeral",
+          })
         } else if (opponent.user.bot) {
-          return await interaction.reply("You cannot challenge a bot")
+          return await interaction.reply({
+            content: "You cannot challenge a bot",
+            flags: "Ephemeral",
+          })
         } else {
-          await interaction.reply(
-            `Attempting to create a challenge request in <#${challengeLog.id}>.`
-          )
+          await interaction.reply({
+            content: `Attempting to create a challenge request in <#${challengeLog.id}>.`,
+            flags: "Ephemeral",
+          })
           return await createMatchRequest(
             interaction,
             opponent,
@@ -255,15 +264,18 @@ const challenge = {
             m.components[0] instanceof ActionRow
         )
         if (challenges.size > 0) {
-          return await interaction.reply(
-            "Cancel your challenge request before joining the queue."
-          )
+          return await interaction.reply({
+            content: "Cancel your challenge request before joining the queue.",
+            flags: "Ephemeral",
+          })
         } else {
           const waiting = interaction.guild.roles.cache.get(queued)
           if (waiting?.members && waiting.members.size < 1) {
-            await interaction.reply(
-              "You've been added to the queue of players waiting for a challenge."
-            )
+            await interaction.reply({
+              content:
+                "You've been added to the queue of players waiting for a challenge.",
+              flags: "Ephemeral",
+            })
             await interaction.member.roles.add(queued)
             const avatar = interaction.user?.avatarURL()
             const embed = new EmbedBuilder()
@@ -278,14 +290,16 @@ const challenge = {
           } else {
             const queuedPlayer = waiting?.members.first()
             if (!queuedPlayer) {
-              return await interaction.reply(
-                "Error getting player from queue. Contact <@254643053548142595>"
-              )
+              return await interaction.reply({
+                content:
+                  "Error getting player from queue. Contact <@254643053548142595>",
+              })
             }
             opponent = queuedPlayer
-            await interaction.reply(
-              `You've been matched against ${opponent.user.username} see: <#${challengeLog.id}>.`
-            )
+            await interaction.reply({
+              content: `You've been matched against ${opponent.user.username} see: <#${challengeLog.id}>.`,
+              flags: "Ephemeral",
+            })
             await opponent.roles.remove(queued)
             await createMatchRequest(
               interaction,
@@ -299,9 +313,10 @@ const challenge = {
         }
       }
     } else {
-      return await interaction.reply(
-        `You must be in <#${challengeLobbyID}> to use this command.`
-      )
+      return await interaction.reply({
+        content: `You must be in <#${challengeLobbyID}> to use this command.`,
+        flags: "Ephemeral",
+      })
     }
   },
 }

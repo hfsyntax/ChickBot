@@ -66,15 +66,17 @@ const judge = {
         )
 
         if (!challengeLog) {
-          return await interaction.reply(
-            "Challenge log does not exist. Contact <@254643053548142595>"
-          )
+          return await interaction.reply({
+            content:
+              "Challenge log does not exist. Contact <@254643053548142595>",
+          })
         }
 
         if (!challengeLog.isTextBased()) {
-          return await interaction.reply(
-            "Challenge log is not a text channel. Contact <@254643053548142595>"
-          )
+          return await interaction.reply({
+            content:
+              "Challenge log is not a text channel. Contact <@254643053548142595>",
+          })
         }
 
         if (
@@ -83,22 +85,30 @@ const judge = {
           !player2ID ||
           !players.has(player2ID)
         ) {
-          return await interaction.reply(
-            "Supplied players must be in the same channel."
-          )
+          return await interaction.reply({
+            content: "Supplied players must be in the same channel.",
+            flags: "Ephemeral",
+          })
         } else if (player1ID === player2ID) {
-          return await interaction.reply(
-            "Player 1 cannot be the same as player 2."
-          )
+          return await interaction.reply({
+            content: "Player 1 cannot be the same as player 2.",
+            flags: "Ephemeral",
+          })
         } else if (players.has(interaction.user.id)) {
-          return await interaction.reply("You cannot judge your own challenge.")
+          return await interaction.reply({
+            content: "You cannot judge your own challenge.",
+            flags: "Ephemeral",
+          })
         } else if (score1 < 0 || score2 < 0) {
-          return await interaction.reply("neither score can be negative.")
+          return await interaction.reply({
+            content: "neither score can be negative.",
+            flags: "Ephemeral",
+          })
         } else {
           const challengeID = interaction.channel.name.split("-")[1]
-          await interaction.reply(
-            `Attempting to judge challenge ID: ${challengeID}`
-          )
+          await interaction.reply({
+            content: `Attempting to judge challenge ID: ${challengeID}`,
+          })
 
           //insert new players and assign crossyoff role
           const player1Query =
@@ -400,12 +410,17 @@ const judge = {
           await interaction.channel.delete()
         }
       } else {
-        await interaction.reply(
-          "You must be in a created challenge channel to use this command."
-        )
+        await interaction.reply({
+          content:
+            "You must be in a created challenge channel to use this command.",
+          flags: "Ephemeral",
+        })
       }
     } else {
-      await interaction.reply("You do not have permission to use this command.")
+      await interaction.reply({
+        content: "You do not have permission to use this command.",
+        flags: "Ephemeral",
+      })
     }
   },
 }

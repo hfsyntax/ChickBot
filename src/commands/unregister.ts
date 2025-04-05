@@ -23,7 +23,10 @@ const unregister = {
       }
 
       if (!interaction.member.roles.cache.has(tournamentRoleID)) {
-        await interaction.reply(`You have not registered for ${tournament}`)
+        await interaction.reply({
+          content: `You have not registered for ${tournament}`,
+          flags: "Ephemeral",
+        })
       } else {
         const embed = new EmbedBuilder()
           .setColor("DarkOrange")
@@ -34,11 +37,17 @@ const unregister = {
           .setTimestamp()
           .setFooter({ text: `Withdrew from ${tournament} 🏆` })
         if (logs?.isSendable()) await logs.send({ embeds: [embed] })
-        await interaction.reply(`Successfully unregistered from ${tournament}`)
+        await interaction.reply({
+          content: `Successfully unregistered from ${tournament}`,
+          flags: "Ephemeral",
+        })
         await interaction.member.roles.remove(tournamentRoleID)
       }
     } else {
-      await interaction.reply("No tournaments are available")
+      await interaction.reply({
+        content: "No tournaments are available",
+        flags: "Ephemeral",
+      })
     }
   },
 }

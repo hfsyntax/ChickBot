@@ -54,12 +54,14 @@ const records = {
         )
     ),
   async execute(interaction: ChatInputCommandInteraction) {
-    if (!interaction.channel?.isSendable()) return
+    if (!interaction.inCachedGuild() || !interaction.channel?.isSendable())
+      return
     const category = interaction.options.get("category")?.value as string
     const platform = interaction.options.get("platform")?.value as string
-    await interaction.reply(
-      `Fetching records for ${category} ${platform}, please be patient.`
-    )
+    await interaction.reply({
+      content: `Fetching records for ${category} ${platform}, please be patient.`,
+      flags: "Ephemeral",
+    })
 
     let categoryID = getData(category?.toLowerCase())
     let continueLooping = true
@@ -105,9 +107,10 @@ const records = {
     })
 
     if (apiData.length <= 0) {
-      return await interaction.channel.send(
-        `<@${interaction.user.id}> no data found for ${category} ${platform}`
-      )
+      return await interaction.followUp({
+        content: `<@${interaction.user.id}> no data found for ${category} ${platform}`,
+        flags: "Ephemeral",
+      })
     }
 
     // format highscores correctly and sort
@@ -164,7 +167,7 @@ const records = {
       .setFooter({ text: `Retrieved from speedrun.com/crossy` })
       .setTimestamp()
 
-    await interaction?.channel.send({ embeds: [embed] })
+    await interaction.followUp({ embeds: [embed], flags: "Ephemeral" })
   },
 }
 
