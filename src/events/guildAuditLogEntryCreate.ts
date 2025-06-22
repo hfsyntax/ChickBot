@@ -1,5 +1,6 @@
 import type { GuildAuditLogsEntry, Guild } from "discord.js"
 import { AuditLogEvent, Events, EmbedBuilder } from "discord.js"
+import limiter from "../utilities/limiter"
 
 const GuildAuditLogEntryCreate = {
   name: Events.GuildAuditLogEntryCreate,
@@ -17,8 +18,12 @@ const GuildAuditLogEntryCreate = {
       action === AuditLogEvent.MemberBanAdd ||
       action === AuditLogEvent.MemberBanRemove
     ) {
-      const executor = await server.members.fetch(executorId)
-      const target = await server.members.client.users.fetch(targetId)
+      const executor = await limiter.schedule(() =>
+        server.members.fetch(executorId)
+      )
+      const target = await limiter.schedule(() =>
+        server.members.client.users.fetch(targetId)
+      )
       const channel = server.channels.cache.get(logs)
       const executorAvatar = executor.user.avatarURL()
       const embed = new EmbedBuilder()
@@ -52,7 +57,7 @@ const GuildAuditLogEntryCreate = {
         embed.setColor("Blue")
       }
 
-      await channel.send({ embeds: [embed] })
+      await limiter.schedule(() => channel.send({ embeds: [embed] }))
     }
   },
 }

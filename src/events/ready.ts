@@ -17,6 +17,7 @@ import {
   ComponentType,
 } from "discord.js"
 import sql from "../sql"
+import limiter from "../utilities/limiter"
 
 const ready = {
   name: Events.ClientReady,
@@ -33,6 +34,8 @@ const ready = {
     const serverID = "600865413890310155"
     const guild = client.guilds.cache.get(serverID)
 
+    if (!guild) throw new Error(`Guild with id: ${serverID} is not found.`)
+
     // check uncached challenge requests
     const challengeLogsChannelID = "1171571198023442535"
     const challengeLogs = guild?.channels.cache.get(challengeLogsChannelID)
@@ -41,7 +44,9 @@ const ready = {
       throw new Error("Challenge log channel is not a text channel.")
     }
 
-    const challenges = await challengeLogs?.messages.fetch({ limit: 30 })
+    const challenges = await limiter.schedule(() =>
+      challengeLogs?.messages.fetch({ limit: 30 })
+    )
     for (let message of challenges) {
       // reattatch message component listener for all pending challenges
       if (
@@ -62,7 +67,9 @@ const ready = {
           const timestamp = challenge.created
           const challengerID = challenge.challenger_id
           const opponentID = challenge.opponent_id
-          const challenger = await guild?.members.fetch(challengerID)
+          const challenger = await limiter.schedule(() =>
+            guild.members.fetch(challengerID)
+          )
           // check if the run is expired
           if (Date.now() - timestamp > 3600000) {
             challengeEmbed.setAuthor({
@@ -78,11 +85,13 @@ const ready = {
               value: "opponent did not respond in time",
             })
 
-            await sentEmbed.edit({
-              content: `<@${challengerID}>`,
-              embeds: [challengeEmbed],
-              components: [],
-            })
+            await limiter.schedule(() =>
+              sentEmbed.edit({
+                content: `<@${challengerID}>`,
+                embeds: [challengeEmbed],
+                components: [],
+              })
+            )
 
             // log into db to delete saved button collector
             await sql`DELETE FROM crossy_road_challenges WHERE message_id = ${sentEmbed.id}`
@@ -118,11 +127,13 @@ const ready = {
           const challengerID =
             sentEmbed.embeds[0].data.author?.name.match(/<(.*?)>/)?.[1]
           if (challengerID)
-            await sentEmbed.edit({
-              content: `<@${challengerID}>`,
-              embeds: [challengeEmbed],
-              components: [],
-            })
+            await limiter.schedule(() =>
+              sentEmbed.edit({
+                content: `<@${challengerID}>`,
+                embeds: [challengeEmbed],
+                components: [],
+              })
+            )
         }
       }
     }
@@ -137,7 +148,9 @@ const ready = {
       throw new Error("Lcs run logs channel is not a text channel.")
     }
 
-    const lcsRunsMessages = await lcsRunsChannel.messages.fetch({ limit: 30 })
+    const lcsRunsMessages = await limiter.schedule(() =>
+      lcsRunsChannel.messages.fetch({ limit: 30 })
+    )
     // reattach button listners for all nonexpired runs
     for (let message of lcsRunsMessages) {
       if (
@@ -164,10 +177,12 @@ const ready = {
           const userID = run.user_id
           // check if the run is expired
           if (Date.now() - timestamp > 18000000 * 3) {
-            logEmbedQuery = await lcsRunsChannel.messages.fetch({
-              before: movesEmbed.id,
-              limit: 1,
-            })
+            logEmbedQuery = await limiter.schedule(() =>
+              lcsRunsChannel.messages.fetch({
+                before: movesEmbed.id,
+                limit: 1,
+              })
+            )
             const logEmbed = logEmbedQuery.first()
             if (logEmbed) {
               const name = logEmbed.embeds[0].data.author?.name
@@ -181,16 +196,20 @@ const ready = {
                 .setColor("Red")
                 .setFooter({ text: `Cancelled run ${id} due to expiration` })
                 .setTimestamp()
-              await movesEmbed.delete()
+              limiter.schedule(() => movesEmbed.delete())
               if (logsChannel?.isSendable())
-                await logsChannel.send({ embeds: [embed] })
+                await limiter.schedule(() =>
+                  logsChannel.send({ embeds: [embed] })
+                )
             }
           } else {
             // reattatch listener for non-expired run
-            logEmbedQuery = await lcsRunsChannel.messages.fetch({
-              before: movesEmbed.id,
-              limit: 1,
-            })
+            logEmbedQuery = await limiter.schedule(() =>
+              lcsRunsChannel.messages.fetch({
+                before: movesEmbed.id,
+                limit: 1,
+              })
+            )
             const logEmbed = logEmbedQuery.first()
             const fifteenHours = 15 * 60 * 60 * 1000
             const remainingTime = fifteenHours - (Date.now() - timestamp)
@@ -207,10 +226,12 @@ const ready = {
           }
         } else {
           // delete non-existing runs in the database
-          logEmbedQuery = await lcsRunsChannel.messages.fetch({
-            before: movesEmbed.id,
-            limit: 1,
-          })
+          logEmbedQuery = await limiter.schedule(() =>
+            lcsRunsChannel.messages.fetch({
+              before: movesEmbed.id,
+              limit: 1,
+            })
+          )
           const logEmbed = logEmbedQuery.first()
           const name = logEmbed?.embeds[0].data.author?.name
           const iconURL = logEmbed?.embeds[0].data.author?.icon_url
@@ -225,9 +246,9 @@ const ready = {
               text: `Cancelled pending run ${id} due to run not existing in database.`,
             })
             .setTimestamp()
-          await movesEmbed.delete()
+          await limiter.schedule(() => movesEmbed.delete())
           if (logsChannel?.isSendable())
-            await logsChannel.send({ embeds: [embed] })
+            await limiter.schedule(() => logsChannel.send({ embeds: [embed] }))
         }
       }
     }

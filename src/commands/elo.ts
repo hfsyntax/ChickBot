@@ -6,6 +6,7 @@ import type {
 } from "discord.js"
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js"
 import sql from "../sql"
+import limiter from "../utilities/limiter"
 
 const elo = {
   data: new SlashCommandBuilder()
@@ -33,9 +34,11 @@ const elo = {
       )
 
       if (!userEloDataQuery) {
-        return await interaction.reply({
-          content: `Database connection error contact: <@254643053548142595>`,
-        })
+        return limiter.schedule(() =>
+          interaction.reply({
+            content: `Database connection error contact: <@254643053548142595>`,
+          })
+        )
       }
 
       const userEloData = userEloDataQuery[0]
@@ -48,10 +51,12 @@ const elo = {
         userEloData.games &&
         userEloData.won
       ) {
-        await interaction.reply({
-          content: `Fetching elo for ${user?.user?.username} please be patient.`,
-          flags: "Ephemeral",
-        })
+        await limiter.schedule(() =>
+          interaction.reply({
+            content: `Fetching elo for ${user?.user?.username} please be patient.`,
+            flags: "Ephemeral",
+          })
+        )
 
         const avatar = user.user?.avatarURL()
         const embed = new EmbedBuilder()
@@ -66,15 +71,19 @@ const elo = {
           })
           .setTimestamp()
           .setFooter({ text: `Retrieved from crossyoff.vercel.app` })
-        return await interaction.followUp({
-          embeds: [embed],
-          flags: "Ephemeral",
-        })
+        return await limiter.schedule(() =>
+          interaction.followUp({
+            embeds: [embed],
+            flags: "Ephemeral",
+          })
+        )
       } else {
-        return await interaction.reply({
-          content: "user not found",
-          flags: "Ephemeral",
-        })
+        return await limiter.schedule(() =>
+          interaction.reply({
+            content: "user not found",
+            flags: "Ephemeral",
+          })
+        )
       }
     }
   },

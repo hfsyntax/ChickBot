@@ -1,5 +1,6 @@
 import type { GuildMember } from "discord.js"
 import { Events, EmbedBuilder, AuditLogEvent } from "discord.js"
+import limiter from "../utilities/limiter"
 
 const GuildMemberRemove = {
   name: Events.GuildMemberRemove,
@@ -20,9 +21,11 @@ const GuildMemberRemove = {
       .setFooter({ text: "Left" })
       .setTimestamp()
 
-    const fetchedKicks = await member.guild.fetchAuditLogs({
-      type: AuditLogEvent.MemberKick,
-    })
+    const fetchedKicks = await limiter.schedule(() =>
+      member.guild.fetchAuditLogs({
+        type: AuditLogEvent.MemberKick,
+      })
+    )
 
     fetchedKicks.entries
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
@@ -33,9 +36,11 @@ const GuildMemberRemove = {
       if (firstEntry && member.joinedAt && firstEntry > member.joinedAt) return
     }
 
-    const fetchedBans = await member.guild.fetchAuditLogs({
-      type: AuditLogEvent.MemberBanAdd,
-    })
+    const fetchedBans = await limiter.schedule(() =>
+      member.guild.fetchAuditLogs({
+        type: AuditLogEvent.MemberBanAdd,
+      })
+    )
 
     fetchedBans.entries
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
@@ -50,7 +55,7 @@ const GuildMemberRemove = {
       return console.error("Server logs channel must be a text channel.")
     }
 
-    await channel.send({ embeds: [embed] })
+    await limiter.schedule(() => channel.send({ embeds: [embed] }))
   },
 }
 

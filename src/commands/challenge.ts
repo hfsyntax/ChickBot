@@ -1,5 +1,5 @@
 import type { PlayerData } from "../types.js"
-import type {
+import {
   ChatInputCommandInteraction,
   CommandInteraction,
   GuildMember,
@@ -21,6 +21,7 @@ import {
   handleChallengeCollector,
   startChallenge,
 } from "../utilities/helper_functions.js"
+import limiter from "../utilities/limiter.js"
 
 /**
  * Creates a match request for a challenger and opponent.
@@ -47,9 +48,20 @@ async function createMatchRequest(
 
   if (!challengerDataQuery) {
     if (interaction.channel?.isSendable())
-      await interaction?.channel?.send({
-        content: `Failed to check challenger challenge data. Contact: <@254643053548142595>`,
-      })
+      await limiter
+        .schedule(() => {
+          if (
+            !interaction.channel ||
+            !(interaction.channel instanceof TextChannel)
+          )
+            throw new Error(
+              "Failed to create match request, channel does not exist or is not a text channel."
+            )
+          return interaction.channel.send({
+            content: `Failed to check challenger challenge data. Contact: <@254643053548142595>`,
+          })
+        })
+        .catch(() => null)
     return
   }
 
@@ -64,9 +76,20 @@ async function createMatchRequest(
 
   if (!opponentDataQuery) {
     if (interaction.channel?.isSendable())
-      await interaction?.channel?.send({
-        content: `Failed to check opponent challenge data. Contact: <@254643053548142595>`,
-      })
+      await limiter
+        .schedule(() => {
+          if (
+            !interaction.channel ||
+            !(interaction.channel instanceof TextChannel)
+          )
+            throw new Error(
+              "Failed to create match request, channel does not exist or is not a text channel."
+            )
+          return interaction.channel.send({
+            content: `Failed to check opponent challenge data. Contact: <@254643053548142595>`,
+          })
+        })
+        .catch(() => null)
     return
   }
 
@@ -116,10 +139,12 @@ async function createMatchRequest(
     .setTimestamp()
 
   if (!queuedMatch) {
-    sentEmbed = await challengeLog.send({
-      content: `<@${opponentID}>`,
-      embeds: [embed],
-    })
+    sentEmbed = await limiter.schedule(() =>
+      challengeLog.send({
+        content: `<@${opponentID}>`,
+        embeds: [embed],
+      })
+    )
 
     // create the buttons for the embed
     const acceptButton = new ButtonBuilder()
@@ -146,7 +171,9 @@ async function createMatchRequest(
     })
 
     embed.setFooter({ text: `challenge ID: ${sentEmbed.id}` })
-    await sentEmbed.edit({ embeds: [embed], components: [row] })
+    await limiter.schedule(() =>
+      sentEmbed.edit({ embeds: [embed], components: [row] })
+    )
 
     // store challege collector data in case bot restarts
     const storeChallengeCollectorQuery =
@@ -161,9 +188,20 @@ async function createMatchRequest(
 
     if (!storeChallengeCollectorQuery) {
       if (interaction.channel?.isSendable())
-        await interaction?.channel?.send({
-          content: `Failed to store challenge message. Contact: <@254643053548142595>`,
-        })
+        await limiter
+          .schedule(() => {
+            if (
+              !interaction.channel ||
+              !(interaction.channel instanceof TextChannel)
+            )
+              throw new Error(
+                "Failed to create match request, channel does not exist or is not a text channel."
+              )
+            return interaction.channel.send({
+              content: `Failed to store challenge message. Contact: <@254643053548142595>`,
+            })
+          })
+          .catch(() => null)
       return
     }
 
@@ -171,10 +209,12 @@ async function createMatchRequest(
     handleChallengeCollector(sentEmbed, interaction.member, collector)
   } else {
     // queued match call startChallenge immediately...
-    sentEmbed = await challengeLog.send({
-      content: `<@${opponentID}>`,
-      embeds: [embed],
-    })
+    sentEmbed = await limiter.schedule(() =>
+      challengeLog.send({
+        content: `<@${opponentID}>`,
+        embeds: [embed],
+      })
+    )
     await startChallenge(sentEmbed, opponent, interaction)
   }
 }
@@ -195,10 +235,12 @@ const challenge = {
     ) as TextChannel | undefined
 
     if (!challengeLog) {
-      return await interaction.reply({
-        content:
-          "The challenge log channel does not exist. Contact: @<254643053548142595>",
-      })
+      return await limiter.schedule(() =>
+        interaction.reply({
+          content:
+            "The challenge log channel does not exist. Contact: @<254643053548142595>",
+        })
+      )
     }
 
     let opponent = interaction.options.get("opponent")?.member
@@ -214,34 +256,44 @@ const challenge = {
         interaction.member.roles.cache.has(playing) ||
         interaction.member.roles.cache.has(queued)
       ) {
-        return await interaction.reply({
-          content: "You are already queued/playing a challenge.",
-          flags: "Ephemeral",
-        })
-      } else if (opponent) {
-        if (opponent?.user?.id === interaction.user.id) {
-          return await interaction.reply({
-            content: "You cannot challenge yourself.",
+        return await limiter.schedule(() =>
+          interaction.reply({
+            content: "You are already queued/playing a challenge.",
             flags: "Ephemeral",
           })
+        )
+      } else if (opponent) {
+        if (opponent?.user?.id === interaction.user.id) {
+          return await limiter.schedule(() =>
+            interaction.reply({
+              content: "You cannot challenge yourself.",
+              flags: "Ephemeral",
+            })
+          )
         } else if (
           opponent.roles.cache.has(playing) ||
           opponent.roles.cache.has(queued)
         ) {
-          return await interaction.reply({
-            content: `${opponent.user.username} is already in a queue/challenge.`,
-            flags: "Ephemeral",
-          })
+          return await limiter.schedule(() =>
+            interaction.reply({
+              content: `${opponent?.user.username} is already in a queue/challenge.`,
+              flags: "Ephemeral",
+            })
+          )
         } else if (opponent.user.bot) {
-          return await interaction.reply({
-            content: "You cannot challenge a bot",
-            flags: "Ephemeral",
-          })
+          return await limiter.schedule(() =>
+            interaction.reply({
+              content: "You cannot challenge a bot",
+              flags: "Ephemeral",
+            })
+          )
         } else {
-          await interaction.reply({
-            content: `Attempting to create a challenge request in <#${challengeLog.id}>.`,
-            flags: "Ephemeral",
-          })
+          await limiter.schedule(() =>
+            interaction.reply({
+              content: `Attempting to create a challenge request in <#${challengeLog.id}>.`,
+              flags: "Ephemeral",
+            })
+          )
           return await createMatchRequest(
             interaction,
             opponent,
@@ -253,7 +305,9 @@ const challenge = {
         }
       } else {
         // ensure the player has no pending challenges before adding to queue
-        const messages = await challengeLog.messages.fetch({ limit: 30 })
+        const messages = await limiter.schedule(() =>
+          challengeLog.messages.fetch({ limit: 30 })
+        )
         const challenges = messages.filter(
           (m) =>
             m.embeds.length === 1 &&
@@ -264,19 +318,24 @@ const challenge = {
             m.components[0] instanceof ActionRow
         )
         if (challenges.size > 0) {
-          return await interaction.reply({
-            content: "Cancel your challenge request before joining the queue.",
-            flags: "Ephemeral",
-          })
+          return await limiter.schedule(() =>
+            interaction.reply({
+              content:
+                "Cancel your challenge request before joining the queue.",
+              flags: "Ephemeral",
+            })
+          )
         } else {
           const waiting = interaction.guild.roles.cache.get(queued)
           if (waiting?.members && waiting.members.size < 1) {
-            await interaction.reply({
-              content:
-                "You've been added to the queue of players waiting for a challenge.",
-              flags: "Ephemeral",
-            })
-            await interaction.member.roles.add(queued)
+            await limiter.schedule(() =>
+              interaction.reply({
+                content:
+                  "You've been added to the queue of players waiting for a challenge.",
+                flags: "Ephemeral",
+              })
+            )
+            await limiter.schedule(() => interaction.member.roles.add(queued))
             const avatar = interaction.user?.avatarURL()
             const embed = new EmbedBuilder()
               .setColor("Grey")
@@ -286,21 +345,33 @@ const challenge = {
               })
               .setFooter({ text: "Qeued for challenge" })
               .setTimestamp()
-            return await challengeLog.send({ embeds: [embed] })
+            return await limiter.schedule(() =>
+              challengeLog.send({ embeds: [embed] })
+            )
           } else {
             const queuedPlayer = waiting?.members.first()
             if (!queuedPlayer) {
-              return await interaction.reply({
-                content:
-                  "Error getting player from queue. Contact <@254643053548142595>",
-              })
+              return await limiter.schedule(() =>
+                interaction.reply({
+                  content:
+                    "Error getting player from queue. Contact <@254643053548142595>",
+                })
+              )
             }
             opponent = queuedPlayer
             await interaction.reply({
               content: `You've been matched against ${opponent.user.username} see: <#${challengeLog.id}>.`,
               flags: "Ephemeral",
             })
-            await opponent.roles.remove(queued)
+            await limiter
+              .schedule(() => {
+                if (!opponent)
+                  throw new Error(
+                    "Could not remove role from opponent, opponent is undefined."
+                  )
+                return opponent.roles.remove(queued)
+              })
+              .catch(() => null)
             await createMatchRequest(
               interaction,
               opponent,
@@ -313,10 +384,12 @@ const challenge = {
         }
       }
     } else {
-      return await interaction.reply({
-        content: `You must be in <#${challengeLobbyID}> to use this command.`,
-        flags: "Ephemeral",
-      })
+      return await limiter.schedule(() =>
+        interaction.reply({
+          content: `You must be in <#${challengeLobbyID}> to use this command.`,
+          flags: "Ephemeral",
+        })
+      )
     }
   },
 }

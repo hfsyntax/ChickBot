@@ -6,6 +6,7 @@ import type {
   InteractionCollector,
   ButtonInteraction,
   MessageActionRowComponentBuilder,
+  ChatInputCommandInteraction,
 } from "discord.js"
 import {
   EmbedBuilder,
@@ -14,8 +15,31 @@ import {
   ActionRowBuilder,
   ButtonBuilder,
   ComponentType,
+  TextChannel,
 } from "discord.js"
 import sql from "../sql"
+import limiter from "./limiter"
+import chunkMessage from "./chunkMessage"
+
+async function sendMessageToDeveloper(
+  interaction: ButtonInteraction | ChatInputCommandInteraction,
+  message: string
+) {
+  const dev = await limiter
+    .schedule(() => {
+      if (!interaction.guild) throw new Error("Guild does not exist")
+      return interaction.guild.members.fetch("254643053548142595")
+    })
+    .catch(() => null)
+
+  if (dev) {
+    await Promise.all(
+      chunkMessage(message).map((m) =>
+        limiter.schedule(() => dev.send({ content: m }))
+      )
+    )
+  }
+}
 
 /**
  * Generates a 4 move sequence to be performed before a run.
@@ -52,8 +76,10 @@ function handleRunsCollector(
     if (!interactor.channel?.isSendable()) return
     // only send interaction reply once
     if (!interactor.replied || interactor.deferred) {
-      await interactor.reply({ content: "foobar", flags: "Ephemeral" })
-      await interactor.deleteReply()
+      await limiter.schedule(() =>
+        interactor.reply({ content: "foobar", flags: "Ephemeral" })
+      )
+      await limiter.schedule(() => interactor.deleteReply())
     }
 
     const cachedActionRow = interactor.message.components[0]
@@ -86,21 +112,36 @@ function handleRunsCollector(
       })
       const deleteRunMessageQuery =
         await sql`DELETE FROM crossy_road_runs WHERE message_id = ${movesEmbed.id}`.catch(
-          (error: Error) => {
+          async (error: Error) => {
+            await sendMessageToDeveloper(
+              interactor,
+              error.stack ?? String(error)
+            )
             console.error(error)
             return null
           }
         )
 
       if (!deleteRunMessageQuery) {
-        return await interactor.channel.send({
-          content:
-            "Failed to delete run message in database. Contact <@254643053548142595>",
-        })
+        return await limiter
+          .schedule(() => {
+            if (
+              !interactor.inCachedGuild() ||
+              !(interactor.channel instanceof TextChannel)
+            )
+              throw new Error(
+                "Runs collector used in a non-cached guild or non text-based channel."
+              )
+            return interactor.channel.send({
+              content:
+                "Failed to delete run message in database. Contact <@254643053548142595>",
+            })
+          })
+          .catch(() => null)
       }
 
-      await logEmbed.edit({ embeds: [logEmbedBuilder] })
-      await movesEmbed.delete()
+      await limiter.schedule(() => logEmbed.edit({ embeds: [logEmbedBuilder] }))
+      await limiter.schedule(() => movesEmbed.delete())
     } else if (interactor.customId === "nextrun") {
       // set new moves and update timestamp to the moves embed for each run
       const movesToDo = generateMoves()
@@ -113,37 +154,56 @@ function handleRunsCollector(
       // enable end run button again
       nextRunButton?.setDisabled(true)
       endRunButton?.setDisabled(false)
-      await movesEmbed.edit({
-        embeds: [movesEmbedBuilder],
-        components: [row],
-      })
+      await limiter.schedule(() =>
+        movesEmbed.edit({
+          embeds: [movesEmbedBuilder],
+          components: [row],
+        })
+      )
       // add the time started for each run to the interaction embed
       logEmbedBuilder.addFields({
         name: `Started Run ${runAttempts}`,
         value: `<t:${Math.floor(Date.now() / 1000)}> (${movesToDo})`,
         inline: false,
       })
-      await logEmbed.edit({ embeds: [logEmbedBuilder] })
+      await limiter.schedule(() => logEmbed.edit({ embeds: [logEmbedBuilder] }))
       const updateRunMessageQuery =
         await sql`UPDATE crossy_road_runs SET actions = actions - 1 WHERE message_id = ${movesEmbed.id}`.catch(
-          (error: Error) => {
+          async (error: Error) => {
+            await sendMessageToDeveloper(
+              interactor,
+              error.stack ?? String(error)
+            )
             console.error(error)
             return null
           }
         )
       if (!updateRunMessageQuery) {
-        return await interactor.channel.send({
-          content: `Failed to update run message in database. Contact <@254643053548142595>`,
-        })
+        return await limiter
+          .schedule(() => {
+            if (
+              !interactor.inCachedGuild() ||
+              !(interactor.channel instanceof TextChannel)
+            )
+              throw new Error(
+                "Runs collector used in a non-cached guild or non text-based channel."
+              )
+            return interactor.channel.send({
+              content: `Failed to update run message in database. Contact <@254643053548142595>`,
+            })
+          })
+          .catch(() => null)
       }
     } else if (interactor.customId === "endrun") {
       // enable next run button again
       nextRunButton?.setDisabled(false)
       endRunButton?.setDisabled(true)
-      await movesEmbed.edit({
-        embeds: [movesEmbedBuilder],
-        components: [row],
-      })
+      await limiter.schedule(() =>
+        movesEmbed.edit({
+          embeds: [movesEmbedBuilder],
+          components: [row],
+        })
+      )
       logEmbedBuilder.addFields({
         name: `Ended Run ${runAttempts}`,
         value: `<t:${Math.floor(Date.now() / 1000)}> (${Date.now()})`,
@@ -159,37 +219,67 @@ function handleRunsCollector(
 
         const deleteRunMessageQuery =
           await sql`DELETE FROM crossy_road_runs WHERE message_id = ${movesEmbed.id}`.catch(
-            (error: Error) => {
+            async (error: Error) => {
+              await sendMessageToDeveloper(
+                interactor,
+                error.stack ?? String(error)
+              )
               console.error(error)
               return null
             }
           )
 
         if (!deleteRunMessageQuery) {
-          return await interactor.channel.send({
-            content:
-              "Failed to delete run message in database. Contact <@254643053548142595>",
-          })
+          return await limiter
+            .schedule(() => {
+              if (
+                !interactor.inCachedGuild() ||
+                !(interactor.channel instanceof TextChannel)
+              )
+                throw new Error(
+                  "Runs collector used in a non-cached guild or non text-based channel."
+                )
+              return interactor.channel.send({
+                content:
+                  "Failed to delete run message in database. Contact <@254643053548142595>",
+              })
+            })
+            .catch(() => null)
         }
 
-        await movesEmbed.delete()
+        await limiter.schedule(() => movesEmbed.delete())
       } else {
         runAttempts++
         const updateRunMessageQuery =
           await sql`UPDATE crossy_road_runs SET run_attempts = ${runAttempts}, actions = actions - 1  WHERE message_id = ${movesEmbed.id}`.catch(
-            (error: Error) => {
+            async (error: Error) => {
+              await sendMessageToDeveloper(
+                interactor,
+                error.stack ?? String(error)
+              )
               console.error(error)
               return null
             }
           )
         if (!updateRunMessageQuery) {
-          return await interactor.channel.send({
-            content:
-              "Failed to update run message in database. Contact <@254643053548142595>",
-          })
+          return await limiter
+            .schedule(() => {
+              if (
+                !interactor.inCachedGuild() ||
+                !(interactor.channel instanceof TextChannel)
+              )
+                throw new Error(
+                  "Runs collector used in a non-cached guild or non text-based channel."
+                )
+              return interactor.channel.send({
+                content:
+                  "Failed to update run message in database. Contact <@254643053548142595>",
+              })
+            })
+            .catch(() => null)
         }
       }
-      await logEmbed.edit({ embeds: [logEmbedBuilder] })
+      await limiter.schedule(() => logEmbed.edit({ embeds: [logEmbedBuilder] }))
     }
   })
 
@@ -223,8 +313,10 @@ function handleChallengeCollector(
 
     // only send interaction reply once
     if (!interactor.replied || interactor.deferred) {
-      await interactor.reply({ content: "foobar", flags: "Ephemeral" })
-      await interactor.deleteReply()
+      await limiter.schedule(() =>
+        interactor.reply({ content: "foobar", flags: "Ephemeral" })
+      )
+      await limiter.schedule(() => interactor.deleteReply())
     }
 
     // if the challenger is already playing
@@ -238,11 +330,13 @@ function handleChallengeCollector(
         value: "Challenger is already playing",
       })
 
-      await sentEmbed.edit({
-        content: `<@${interactor.user.id}>`,
-        embeds: [challengeEmbedBuilder],
-        components: [],
-      })
+      await limiter.schedule(() =>
+        sentEmbed.edit({
+          content: `<@${interactor.user.id}>`,
+          embeds: [challengeEmbedBuilder],
+          components: [],
+        })
+      )
     }
     // if the person challenged is already playing
     else if (interactor.member.roles.cache.has(playing)) {
@@ -254,11 +348,13 @@ function handleChallengeCollector(
         name: "Reason:",
         value: "Opponent is already playing",
       })
-      await sentEmbed.edit({
-        content: `<@${challenger.id}>`,
-        embeds: [challengeEmbedBuilder],
-        components: [],
-      })
+      await limiter.schedule(() =>
+        sentEmbed.edit({
+          content: `<@${challenger.id}>`,
+          embeds: [challengeEmbedBuilder],
+          components: [],
+        })
+      )
     } else if (interactor.customId === "accept") {
       await startChallenge(sentEmbed, challenger, interactor)
     } else if (interactor.customId === "reject") {
@@ -270,11 +366,13 @@ function handleChallengeCollector(
         name: "Reason:",
         value: "Opponent rejected challenge",
       })
-      await sentEmbed.edit({
-        content: `<@${challenger.id}>`,
-        embeds: [challengeEmbedBuilder],
-        components: [],
-      })
+      await limiter.schedule(() =>
+        sentEmbed.edit({
+          content: `<@${challenger.id}>`,
+          embeds: [challengeEmbedBuilder],
+          components: [],
+        })
+      )
       const deleteChallengeMessageQuery =
         await sql`DELETE FROM crossy_road_challenges WHERE message_id = ${sentEmbed.id}`.catch(
           (error: Error) => {
@@ -284,10 +382,21 @@ function handleChallengeCollector(
         )
 
       if (!deleteChallengeMessageQuery) {
-        return await interactor.channel.send({
-          content:
-            "Failed to delete challenge message in database. Contact <@254643053548142595>",
-        })
+        return await limiter
+          .schedule(() => {
+            if (
+              !interactor.inCachedGuild() ||
+              !(interactor.channel instanceof TextChannel)
+            )
+              throw new Error(
+                "Runs collector used in a non-cached guild or non text-based channel."
+              )
+            return interactor.channel.send({
+              content:
+                "Failed to delete challenge message in database. Contact <@254643053548142595>",
+            })
+          })
+          .catch(() => null)
       }
     }
   })
@@ -303,20 +412,30 @@ function handleChallengeCollector(
         name: "Reason:",
         value: "opponent did not respond in time",
       })
-      await sentEmbed.edit({
-        content: `<@${challenger.id}>`,
-        embeds: [challengeEmbedBuilder],
-        components: [],
-      })
+      await limiter.schedule(() =>
+        sentEmbed.edit({
+          content: `<@${challenger.id}>`,
+          embeds: [challengeEmbedBuilder],
+          components: [],
+        })
+      )
       // delete saved button collector reference
       const deleteChallengeMessageQuery =
         await sql`DELETE FROM crossy_road_challenges WHERE message_id = ${sentEmbed.id}`
 
       if (!deleteChallengeMessageQuery && sentEmbed.channel.isSendable()) {
-        return await sentEmbed.channel.send({
-          content:
-            "Failed to delete challenge message in database. Contact <@254643053548142595>",
-        })
+        return await limiter
+          .schedule(() => {
+            if (!(sentEmbed.channel instanceof TextChannel))
+              throw new Error(
+                "Runs collector used in a non-cached guild or non text-based channel."
+              )
+            return sentEmbed.channel.send({
+              content:
+                "Failed to delete challenge message in database. Contact <@254643053548142595>",
+            })
+          })
+          .catch(() => null)
       }
     }
   })
@@ -337,68 +456,80 @@ async function startChallenge(
   challengeEmbedBuilder.setFooter({
     text: `Started challenge ID: ${sentEmbed.id}`,
   })
-  await sentEmbed.edit({
-    content: "",
-    embeds: [challengeEmbedBuilder],
-    components: [],
-  })
+  await limiter.schedule(() =>
+    sentEmbed.edit({
+      content: "",
+      embeds: [challengeEmbedBuilder],
+      components: [],
+    })
+  )
   const everyone = "600865413890310155"
   const refs = "799505175541710848"
   const queued = "1172360108307644507"
   const playing = "1172359960559108116"
   //create channel for match
-  const createdChannel = await interaction?.guild?.channels.create({
-    name: `Challenge-${sentEmbed.id}`,
-    type: ChannelType.GuildText,
-    parent: "1171570995056881704",
-    permissionOverwrites: [
-      {
-        id: everyone,
-        deny: [PermissionFlagsBits.ViewChannel],
-      },
-      {
-        id: interaction.client.user.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-          PermissionFlagsBits.EmbedLinks,
+  const createdChannel = await limiter
+    .schedule(() =>
+      interaction?.guild?.channels.create({
+        name: `Challenge-${sentEmbed.id}`,
+        type: ChannelType.GuildText,
+        parent: "1171570995056881704",
+        permissionOverwrites: [
+          {
+            id: everyone,
+            deny: [PermissionFlagsBits.ViewChannel],
+          },
+          {
+            id: interaction.client.user.id,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+              PermissionFlagsBits.EmbedLinks,
+            ],
+          },
+          {
+            id: refs,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+            ],
+          },
+          {
+            id: challenger.id,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+            ],
+          },
+          {
+            id: interaction.user.id,
+            allow: [
+              PermissionFlagsBits.ViewChannel,
+              PermissionFlagsBits.SendMessages,
+            ],
+          },
         ],
-      },
-      {
-        id: refs,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-        ],
-      },
-      {
-        id: challenger.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-        ],
-      },
-      {
-        id: interaction.user.id,
-        allow: [
-          PermissionFlagsBits.ViewChannel,
-          PermissionFlagsBits.SendMessages,
-        ],
-      },
-    ],
-  })
+      })
+    )
+    .catch((error) => {
+      console.error(error)
+      return null
+    })
+
+  if (!createdChannel)
+    return console.error("Error creating challenge channel in startChallenge.")
 
   // if the match is queued we remove both users queue roles
   if (interaction.member.roles.cache.has(queued)) {
-    await interaction.member.roles.remove(queued)
+    await limiter.schedule(() => interaction.member.roles.remove(queued))
   }
 
   if (challenger.roles.cache.has(queued)) {
-    await challenger.roles.remove(queued)
+    await limiter.schedule(() => challenger.roles.remove(queued))
   }
 
-  await interaction.member.roles.add(playing)
-  await challenger.roles.add(playing)
+  await limiter.schedule(() => interaction.member.roles.add(playing))
+  await limiter.schedule(() => challenger.roles.add(playing))
 
   const rulesEmbed = new EmbedBuilder()
     .setColor("Blue")
@@ -414,13 +545,16 @@ async function startChallenge(
         "- all runs must be recorded and have a savable link\n- do not open Crossy Road until after the recording has started\n- use `/run` before starting your runs",
     })
 
-  await createdChannel.send({
-    content: `<@${interaction.user.id}> <@${challenger.id}>`,
-    embeds: [rulesEmbed],
-  })
+  await limiter.schedule(() =>
+    createdChannel.send({
+      content: `<@${interaction.user.id}> <@${challenger.id}>`,
+      embeds: [rulesEmbed],
+    })
+  )
 }
 
 export {
+  sendMessageToDeveloper,
   generateMoves,
   handleRunsCollector,
   handleChallengeCollector,

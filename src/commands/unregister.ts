@@ -1,6 +1,7 @@
 import type { ChatInputCommandInteraction } from "discord.js"
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js"
 import "dotenv/config"
+import limiter from "../utilities/limiter"
 
 const unregister = {
   data: new SlashCommandBuilder()
@@ -17,16 +18,20 @@ const unregister = {
       const avatarURL = interaction.member.user.avatarURL()
 
       if (!tournamentRoleID) {
-        return await interaction.reply(
-          "The tournament role id is invalid. Contact <@254643053548142595>"
+        return await limiter.schedule(() =>
+          interaction.reply(
+            "The tournament role id is invalid. Contact <@254643053548142595>"
+          )
         )
       }
 
       if (!interaction.member.roles.cache.has(tournamentRoleID)) {
-        await interaction.reply({
-          content: `You have not registered for ${tournament}`,
-          flags: "Ephemeral",
-        })
+        await limiter.schedule(() =>
+          interaction.reply({
+            content: `You have not registered for ${tournament}`,
+            flags: "Ephemeral",
+          })
+        )
       } else {
         const embed = new EmbedBuilder()
           .setColor("DarkOrange")
@@ -36,18 +41,25 @@ const unregister = {
           })
           .setTimestamp()
           .setFooter({ text: `Withdrew from ${tournament} 🏆` })
-        if (logs?.isSendable()) await logs.send({ embeds: [embed] })
-        await interaction.reply({
-          content: `Successfully unregistered from ${tournament}`,
-          flags: "Ephemeral",
-        })
-        await interaction.member.roles.remove(tournamentRoleID)
+        if (logs?.isSendable())
+          await limiter.schedule(() => logs.send({ embeds: [embed] }))
+        await limiter.schedule(() =>
+          interaction.reply({
+            content: `Successfully unregistered from ${tournament}`,
+            flags: "Ephemeral",
+          })
+        )
+        await limiter.schedule(() =>
+          interaction.member.roles.remove(tournamentRoleID)
+        )
       }
     } else {
-      await interaction.reply({
-        content: "No tournaments are available",
-        flags: "Ephemeral",
-      })
+      await limiter.schedule(() =>
+        interaction.reply({
+          content: "No tournaments are available",
+          flags: "Ephemeral",
+        })
+      )
     }
   },
 }

@@ -1,8 +1,9 @@
 import type { Player, PlayerData } from "../types.js"
 import type { ChatInputCommandInteraction } from "discord.js"
-import { SlashCommandBuilder, EmbedBuilder } from "discord.js"
+import { SlashCommandBuilder, EmbedBuilder, TextChannel } from "discord.js"
 import sql from "../sql.js"
 import { calculateElo } from "../utilities/calculateElo.js"
+import limiter from "../utilities/limiter.js"
 
 const judge = {
   data: new SlashCommandBuilder()
@@ -66,17 +67,21 @@ const judge = {
         )
 
         if (!challengeLog) {
-          return await interaction.reply({
-            content:
-              "Challenge log does not exist. Contact <@254643053548142595>",
-          })
+          return await limiter.schedule(() =>
+            interaction.reply({
+              content:
+                "Challenge log does not exist. Contact <@254643053548142595>",
+            })
+          )
         }
 
         if (!challengeLog.isTextBased()) {
-          return await interaction.reply({
-            content:
-              "Challenge log is not a text channel. Contact <@254643053548142595>",
-          })
+          return await limiter.schedule(() =>
+            interaction.reply({
+              content:
+                "Challenge log is not a text channel. Contact <@254643053548142595>",
+            })
+          )
         }
 
         if (
@@ -85,30 +90,40 @@ const judge = {
           !player2ID ||
           !players.has(player2ID)
         ) {
-          return await interaction.reply({
-            content: "Supplied players must be in the same channel.",
-            flags: "Ephemeral",
-          })
+          return await limiter.schedule(() =>
+            interaction.reply({
+              content: "Supplied players must be in the same channel.",
+              flags: "Ephemeral",
+            })
+          )
         } else if (player1ID === player2ID) {
-          return await interaction.reply({
-            content: "Player 1 cannot be the same as player 2.",
-            flags: "Ephemeral",
-          })
+          return await limiter.schedule(() =>
+            interaction.reply({
+              content: "Player 1 cannot be the same as player 2.",
+              flags: "Ephemeral",
+            })
+          )
         } else if (players.has(interaction.user.id)) {
-          return await interaction.reply({
-            content: "You cannot judge your own challenge.",
-            flags: "Ephemeral",
-          })
+          return await limiter.schedule(() =>
+            interaction.reply({
+              content: "You cannot judge your own challenge.",
+              flags: "Ephemeral",
+            })
+          )
         } else if (score1 < 0 || score2 < 0) {
-          return await interaction.reply({
-            content: "neither score can be negative.",
-            flags: "Ephemeral",
-          })
+          return await limiter.schedule(() =>
+            interaction.reply({
+              content: "neither score can be negative.",
+              flags: "Ephemeral",
+            })
+          )
         } else {
           const challengeID = interaction.channel.name.split("-")[1]
-          await interaction.reply({
-            content: `Attempting to judge challenge ID: ${challengeID}`,
-          })
+          await limiter.schedule(() =>
+            interaction.reply({
+              content: `Attempting to judge challenge ID: ${challengeID}`,
+            })
+          )
 
           //insert new players and assign crossyoff role
           const player1Query =
@@ -120,9 +135,20 @@ const judge = {
             )
 
           if (!player1Query) {
-            return await interaction.channel.send({
-              content: `Failed to check player elo data. Contact: <@254643053548142595>`,
-            })
+            return await limiter
+              .schedule(() => {
+                if (
+                  !interaction.channel ||
+                  !(interaction.channel instanceof TextChannel)
+                )
+                  throw new Error(
+                    "Failed to send player1query error in judge, interaction channel does not exist or is not a text channel."
+                  )
+                return interaction.channel.send({
+                  content: `Failed to check player elo data. Contact: <@254643053548142595>`,
+                })
+              })
+              .catch(() => null)
           }
 
           const player2Query = await sql`
@@ -134,9 +160,20 @@ const judge = {
           )
 
           if (!player2Query) {
-            return await interaction.channel.send({
-              content: `Failed to check opponent elo data. Contact: <@254643053548142595>`,
-            })
+            return await limiter
+              .schedule(() => {
+                if (
+                  !interaction.channel ||
+                  !(interaction.channel instanceof TextChannel)
+                )
+                  throw new Error(
+                    "Judge command failed to send error message, interaction channel does not exist or is not a text channel."
+                  )
+                return interaction.channel.send({
+                  content: `Failed to check opponent elo data. Contact: <@254643053548142595>`,
+                })
+              })
+              .catch(() => null)
           }
 
           if (player1Query.length === 0 && player1.user?.username) {
@@ -149,11 +186,30 @@ const judge = {
             )
 
             if (!player1InsertionQuery) {
-              return await interaction.channel.send({
-                content: `Failed to insert new player into database. Contact: <@254643053548142595>`,
-              })
+              return await limiter
+                .schedule(() => {
+                  if (
+                    !interaction.channel ||
+                    !(interaction.channel instanceof TextChannel)
+                  )
+                    throw new Error(
+                      "Failed to send error message for judge command, interaction channel does not exist or is not a text channel."
+                    )
+                  return interaction.channel.send({
+                    content: `Failed to insert new player into database. Contact: <@254643053548142595>`,
+                  })
+                })
+                .catch(() => null)
             }
-            await player1.member?.roles.add(crossyoff)
+            await limiter
+              .schedule(() => {
+                if (!player1.member)
+                  throw new Error(
+                    "Could not resolve player1 to add CrossyOff role in judge command."
+                  )
+                return player1.member?.roles.add(crossyoff)
+              })
+              .catch(() => null)
           }
           if (player2Query.length === 0 && player2.user?.username) {
             const player2InsertionQuery = await sql`
@@ -165,12 +221,31 @@ const judge = {
             )
 
             if (!player2InsertionQuery) {
-              return await interaction.channel.send({
-                content: `Failed to insert new player into database. Contact: <@254643053548142595>`,
-              })
+              return await limiter
+                .schedule(() => {
+                  if (
+                    !interaction.channel ||
+                    !(interaction.channel instanceof TextChannel)
+                  )
+                    throw new Error(
+                      "Failed to resolve player2 in judge command, interaction channel does not exist or is not a text channel."
+                    )
+                  return interaction.channel.send({
+                    content: `Failed to insert new player into database. Contact: <@254643053548142595>`,
+                  })
+                })
+                .catch(() => null)
             }
 
-            await player2?.member?.roles.add(crossyoff)
+            await limiter
+              .schedule(() => {
+                if (!player2.member)
+                  throw new Error(
+                    "Failed to resolve player2 to add CrossyOff role to player2 in Judge command."
+                  )
+                return player2.member.roles.add(crossyoff)
+              })
+              .catch(() => null)
           }
 
           //fetch each players data based on id
@@ -183,9 +258,20 @@ const judge = {
           )
 
           if (!player1DataQuery) {
-            return await interaction.channel.send({
-              content: `Failed to get existing player from database. Contact: <@254643053548142595>`,
-            })
+            return await limiter
+              .schedule(() => {
+                if (
+                  !interaction.channel ||
+                  !(interaction.channel instanceof TextChannel)
+                )
+                  throw new Error(
+                    "Failed to send player1DataQuery error in judge, interaction channel does not exist or is not a text channel."
+                  )
+                return interaction.channel.send({
+                  content: `Failed to get existing player from database. Contact: <@254643053548142595>`,
+                })
+              })
+              .catch(() => null)
           }
 
           const player2DataQuery = await sql<Array<PlayerData>>`
@@ -197,9 +283,20 @@ const judge = {
           )
 
           if (!player2DataQuery) {
-            return await interaction.channel.send({
-              content: `Failed to get existing player from database. Contact: <@254643053548142595>`,
-            })
+            return await limiter
+              .schedule(() => {
+                if (
+                  !interaction.channel ||
+                  !(interaction.channel instanceof TextChannel)
+                )
+                  throw new Error(
+                    "Failed to send player2DataQuery error in judge, interaction channel does not exist or is not a text channel."
+                  )
+                return interaction.channel.send({
+                  content: `Failed to get existing player from database. Contact: <@254643053548142595>`,
+                })
+              })
+              .catch(() => null)
           }
 
           const player1Data = player1DataQuery[0]
@@ -216,9 +313,20 @@ const judge = {
             !player2Data.games ||
             !player2Data.won
           ) {
-            return await interaction.channel.send({
-              content: `Failed to get some existing player data fields. Contact: <@254643053548142595>`,
-            })
+            return await limiter
+              .schedule(() => {
+                if (
+                  !interaction.channel ||
+                  !(interaction.channel instanceof TextChannel)
+                )
+                  throw new Error(
+                    "Failed to send data fields error in judge, interaction channel does not exist or is not a text channel."
+                  )
+                return interaction.channel.send({
+                  content: `Failed to get some existing player data fields. Contact: <@254643053548142595>`,
+                })
+              })
+              .catch(() => null)
           }
 
           const initalPlayer1Elo = player1Data.elo
@@ -258,9 +366,20 @@ const judge = {
           )
 
           if (!updatePlayer1DataQuery) {
-            return await interaction.channel.send({
-              content: `Failed to update players elo rankings. Contact: <@254643053548142595>`,
-            })
+            return await limiter
+              .schedule(() => {
+                if (
+                  !interaction.channel ||
+                  !(interaction.channel instanceof TextChannel)
+                )
+                  throw new Error(
+                    "Failed to send updatePlayer1DataQuery error in judge, interaction channel does not exist or is not a text channel."
+                  )
+                return interaction.channel.send({
+                  content: `Failed to update players elo rankings. Contact: <@254643053548142595>`,
+                })
+              })
+              .catch(() => null)
           }
 
           const updatePlayer2DataQuery = await sql`
@@ -272,14 +391,25 @@ const judge = {
           )
 
           if (!updatePlayer2DataQuery) {
-            return await interaction.channel.send({
-              content: `Failed to update players elo rankings. Contact: <@254643053548142595>`,
-            })
+            return await limiter
+              .schedule(() => {
+                if (
+                  !interaction.channel ||
+                  !(interaction.channel instanceof TextChannel)
+                )
+                  throw new Error(
+                    "Failed to send updatePlayer2DataQuery error in judge, interaction channel does not exist or is not a text channel."
+                  )
+                return interaction.channel.send({
+                  content: `Failed to update players elo rankings. Contact: <@254643053548142595>`,
+                })
+              })
+              .catch(() => null)
           }
 
           //convert player1/player2 params to challenger/opponent
-          const challengeMessage = await challengeLog?.messages?.fetch(
-            challengeID
+          const challengeMessage = await limiter.schedule(() =>
+            challengeLog?.messages?.fetch(challengeID)
           )
           const challengerID =
             challengeMessage?.embeds?.[0]?.data?.author?.name?.match(
@@ -287,9 +417,20 @@ const judge = {
             )?.[1]
 
           if (!challengerID) {
-            return await interaction.channel.send({
-              content: `Could not parse challenger from challenge embed contact: <@254643053548142595>`,
-            })
+            return await limiter
+              .schedule(() => {
+                if (
+                  !interaction.channel ||
+                  !(interaction.channel instanceof TextChannel)
+                )
+                  throw new Error(
+                    "Failed to get challenger id and send error message in judge, interaction channel does not exist or is not a text channel."
+                  )
+                return interaction.channel.send({
+                  content: `Could not parse challenger from challenge embed contact: <@254643053548142595>`,
+                })
+              })
+              .catch(() => null)
           }
 
           const challenerName =
@@ -330,9 +471,20 @@ const judge = {
           )
 
           if (!updateChallengeData) {
-            return await interaction.channel.send({
-              content: `Failed to update existing challenge data. Contact: <@254643053548142595>`,
-            })
+            return await limiter
+              .schedule(() => {
+                if (
+                  !interaction.channel ||
+                  !(interaction.channel instanceof TextChannel)
+                )
+                  throw new Error(
+                    "Failed to send update challenge data error message, channel does not exist or is not a text channel."
+                  )
+                return interaction.channel.send({
+                  content: `Failed to update existing challenge data. Contact: <@254643053548142595>`,
+                })
+              })
+              .catch(() => null)
           }
 
           //update all player ranks
@@ -350,9 +502,20 @@ const judge = {
           })
 
           if (!updateEloRankings) {
-            return await interaction.channel.send({
-              content: `Failed to update all CrossyOff players elo rankings. Contact: <@254643053548142595>`,
-            })
+            return await limiter
+              .schedule(() => {
+                if (
+                  !interaction.channel ||
+                  !(interaction.channel instanceof TextChannel)
+                )
+                  throw new Error(
+                    "Failed to send updateelorankings query error in judge, interaction channel does not exist or is not a text channel."
+                  )
+                return interaction.channel.send({
+                  content: `Failed to update all CrossyOff players elo rankings. Contact: <@254643053548142595>`,
+                })
+              })
+              .catch(() => null)
           }
 
           //update log to challenge-logs with data changes
@@ -401,26 +564,56 @@ const judge = {
           challengeEmbedBuilder.setFooter({
             text: `Finished challenge ID: ${challengeID}`,
           })
-          await challengeMessage.edit({
-            embeds: [challengeEmbedBuilder],
-            components: [],
-          })
-          await player1?.member?.roles.remove(playing)
-          await player2?.member?.roles.remove(playing)
-          await interaction.channel.delete()
+          await limiter.schedule(() =>
+            challengeMessage.edit({
+              embeds: [challengeEmbedBuilder],
+              components: [],
+            })
+          )
+          await limiter
+            .schedule(() => {
+              if (!player1.member)
+                throw new Error(
+                  "Failed to resolve player1 to remove playing role"
+                )
+              return player1.member.roles.remove(playing)
+            })
+            .catch(() => null)
+          await limiter
+            .schedule(() => {
+              if (!player2.member)
+                throw new Error(
+                  "Failed to resolve player2 to remove playing role"
+                )
+              return player2?.member?.roles.remove(playing)
+            })
+            .catch(() => null)
+          await limiter
+            .schedule(() => {
+              if (!(interaction.channel instanceof TextChannel))
+                throw new Error(
+                  "failed to delete challenge channel in judge since it does not exist or is not a text channel"
+                )
+              return interaction.channel.delete()
+            })
+            .catch(() => null)
         }
       } else {
-        await interaction.reply({
-          content:
-            "You must be in a created challenge channel to use this command.",
-          flags: "Ephemeral",
-        })
+        await limiter.schedule(() =>
+          interaction.reply({
+            content:
+              "You must be in a created challenge channel to use this command.",
+            flags: "Ephemeral",
+          })
+        )
       }
     } else {
-      await interaction.reply({
-        content: "You do not have permission to use this command.",
-        flags: "Ephemeral",
-      })
+      await limiter.schedule(() =>
+        interaction.reply({
+          content: "You do not have permission to use this command.",
+          flags: "Ephemeral",
+        })
+      )
     }
   },
 }

@@ -1,5 +1,6 @@
 import type { GuildMember } from "discord.js"
 import { Events, EmbedBuilder } from "discord.js"
+import limiter from "../utilities/limiter"
 
 const GuildMemberAdd = {
   name: Events.GuildMemberAdd,
@@ -23,7 +24,7 @@ const GuildMemberAdd = {
     if (!channel || !channel?.isSendable()) {
       return console.error("Server logs channel must be a text channel.")
     }
-    await channel.send({ embeds: [embed] })
+    await limiter.schedule(() => channel.send({ embeds: [embed] }))
   },
 }
 
