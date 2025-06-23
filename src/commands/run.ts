@@ -90,8 +90,10 @@ async function createRun(interaction: ChatInputCommandInteraction) {
     })
     .catch(() => null)
 
-  if (!sentEmbed)
+  if (!sentEmbed) {
+    await limiter.schedule(() => interaction.deleteReply()).catch(() => null)
     return console.error("Failed to send moves embed in createRun")
+  }
 
   const filter = (i: MessageComponentInteraction) =>
     i.user.id === interaction.user.id
@@ -113,6 +115,8 @@ async function createRun(interaction: ChatInputCommandInteraction) {
       }
     )
   if (!storeRunQuery) {
+    await limiter.schedule(() => interaction.deleteReply()).catch(() => null)
+    await limiter.schedule(() => sentEmbed.delete()).catch(() => null)
     return await limiter
       .schedule(() => {
         if (
