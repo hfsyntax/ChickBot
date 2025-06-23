@@ -76,9 +76,7 @@ function handleRunsCollector(
     if (!interactor.channel?.isSendable()) return
     // only send interaction reply once
     if (!interactor.replied || interactor.deferred) {
-      await limiter.schedule(() =>
-        interactor.reply({ content: "foobar", flags: "Ephemeral" })
-      )
+      await limiter.schedule(() => interactor.reply({ content: "foobar" }))
       await limiter.schedule(() => interactor.deleteReply())
     }
 

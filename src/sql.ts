@@ -1,10 +1,10 @@
 import postgres from "postgres"
-const sql = postgres({
-  host: process.env.DB_SERVERNAME,
-  database: process.env.DB_DBNAME,
-  user: process.env.DB_USERNAME,
-  password: process.env.DB_PASSWORD,
-  ssl: "require",
-})
+
+const connectionString = process.env.DATABASE_URL
+
+if (!connectionString)
+  throw new Error("DATABASE_URL environment variable is not defined.")
+
+const sql = postgres(connectionString)
 
 export default sql
