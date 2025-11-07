@@ -10,6 +10,7 @@ const GuildAuditLogEntryCreate = {
    *
    */
   async execute(auditLog: GuildAuditLogsEntry, server: Guild) {
+    if (server.id !== process.env.SERVER_ID) return
     const { action, executorId, targetId } = auditLog
     if (!executorId || !targetId) return
     const logs = "682109939950288954"

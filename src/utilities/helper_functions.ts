@@ -7,6 +7,10 @@ import type {
   ButtonInteraction,
   MessageActionRowComponentBuilder,
   ChatInputCommandInteraction,
+  APIComponentInMessageActionRow,
+  APIActionRowComponent,
+  ActionRow,
+  MessageActionRowComponent,
 } from "discord.js"
 import {
   EmbedBuilder,
@@ -80,9 +84,12 @@ function handleRunsCollector(
       await limiter.schedule(() => interactor.deleteReply())
     }
 
-    const cachedActionRow = interactor.message.components[0]
+    const cachedActionRow = interactor.message
+      .components[0] as ActionRow<MessageActionRowComponent>
     // actionRowBuilder for buttons
-    const component = cachedActionRow.data
+    const component = cachedActionRow.data as Readonly<
+      APIActionRowComponent<APIComponentInMessageActionRow>
+    >
     const row = new ActionRowBuilder<MessageActionRowComponentBuilder>(
       component
     )

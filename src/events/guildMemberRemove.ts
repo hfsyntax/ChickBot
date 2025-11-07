@@ -9,6 +9,7 @@ const GuildMemberRemove = {
    * Emitted whenever a member leaves a guild.
    */
   async execute(member: GuildMember) {
+    if (member.guild.id !== process.env.SERVER_ID) return
     const logs = "682109939950288954"
     const channel = member.guild.channels.cache.get(logs)
     const avatar = member.user.avatarURL()
