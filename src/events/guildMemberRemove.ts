@@ -1,6 +1,6 @@
 import type { GuildMember } from "discord.js"
 import { Events, EmbedBuilder, AuditLogEvent } from "discord.js"
-import limiter from "../utilities/limiter"
+import { limiter, sendLimiter } from "../utilities/limiter"
 
 const GuildMemberRemove = {
   name: Events.GuildMemberRemove,
@@ -22,32 +22,36 @@ const GuildMemberRemove = {
       .setFooter({ text: "Left" })
       .setTimestamp()
 
-    const fetchedKicks = await limiter.schedule(() =>
-      member.guild.fetchAuditLogs({
-        type: AuditLogEvent.MemberKick,
-      })
-    )
+    const fetchedKicks = await limiter
+      .schedule(() =>
+        member.guild.fetchAuditLogs({
+          type: AuditLogEvent.MemberKick,
+        })
+      )
+      .catch(() => null)
 
-    fetchedKicks.entries
+    fetchedKicks?.entries
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .filter((a) => a.targetId === member.id)
 
-    if (fetchedKicks.entries.size >= 1) {
+    if (fetchedKicks && fetchedKicks.entries.size >= 1) {
       const firstEntry = fetchedKicks.entries.first()?.createdAt
       if (firstEntry && member.joinedAt && firstEntry > member.joinedAt) return
     }
 
-    const fetchedBans = await limiter.schedule(() =>
-      member.guild.fetchAuditLogs({
-        type: AuditLogEvent.MemberBanAdd,
-      })
-    )
+    const fetchedBans = await limiter
+      .schedule(() =>
+        member.guild.fetchAuditLogs({
+          type: AuditLogEvent.MemberBanAdd,
+        })
+      )
+      .catch(() => null)
 
-    fetchedBans.entries
+    fetchedBans?.entries
       .sort((a, b) => b.createdAt.getTime() - a.createdAt.getTime())
       .filter((a) => a.targetId === member.id)
 
-    if (fetchedBans.entries.size >= 1) {
+    if (fetchedBans && fetchedBans.entries.size >= 1) {
       const firstEntry = fetchedBans.entries.first()?.createdAt
       if (firstEntry && member.joinedAt && firstEntry > member.joinedAt) return
     }
@@ -56,7 +60,10 @@ const GuildMemberRemove = {
       return console.error("Server logs channel must be a text channel.")
     }
 
-    await limiter.schedule(() => channel.send({ embeds: [embed] }))
+    await sendLimiter
+      .key(channel.id)
+      .schedule(() => limiter.schedule(() => channel.send({ embeds: [embed] })))
+      .catch(() => null)
   },
 }
 

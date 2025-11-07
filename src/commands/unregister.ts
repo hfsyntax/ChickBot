@@ -1,7 +1,7 @@
 import type { ChatInputCommandInteraction } from "discord.js"
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js"
 import "dotenv/config"
-import limiter from "../utilities/limiter"
+import { limiter, sendLimiter } from "../utilities/limiter"
 
 const unregister = {
   data: new SlashCommandBuilder()
@@ -18,20 +18,24 @@ const unregister = {
       const avatarURL = interaction.member.user.avatarURL()
 
       if (!tournamentRoleID) {
-        return await limiter.schedule(() =>
-          interaction.reply(
-            "The tournament role id is invalid. Contact <@254643053548142595>"
+        return await limiter
+          .schedule(() =>
+            interaction.reply(
+              "The tournament role id is invalid. Contact <@254643053548142595>"
+            )
           )
-        )
+          .catch(() => null)
       }
 
       if (!interaction.member.roles.cache.has(tournamentRoleID)) {
-        await limiter.schedule(() =>
-          interaction.reply({
-            content: `You have not registered for ${tournament}`,
-            flags: "Ephemeral",
-          })
-        )
+        await limiter
+          .schedule(() =>
+            interaction.reply({
+              content: `You have not registered for ${tournament}`,
+              flags: "Ephemeral",
+            })
+          )
+          .catch(() => null)
       } else {
         const embed = new EmbedBuilder()
           .setColor("DarkOrange")
@@ -42,24 +46,33 @@ const unregister = {
           .setTimestamp()
           .setFooter({ text: `Withdrew from ${tournament} 🏆` })
         if (logs?.isSendable())
-          await limiter.schedule(() => logs.send({ embeds: [embed] }))
-        await limiter.schedule(() =>
+          await sendLimiter
+            .key(logs.id)
+            .schedule(() =>
+              limiter.schedule(() => logs.send({ embeds: [embed] }))
+            )
+            .catch(() => null)
+        await limiter
+          .schedule(() =>
+            interaction.reply({
+              content: `Successfully unregistered from ${tournament}`,
+              flags: "Ephemeral",
+            })
+          )
+          .catch(() => null)
+        await limiter
+          .schedule(() => interaction.member.roles.remove(tournamentRoleID))
+          .catch(() => null)
+      }
+    } else {
+      await limiter
+        .schedule(() =>
           interaction.reply({
-            content: `Successfully unregistered from ${tournament}`,
+            content: "No tournaments are available",
             flags: "Ephemeral",
           })
         )
-        await limiter.schedule(() =>
-          interaction.member.roles.remove(tournamentRoleID)
-        )
-      }
-    } else {
-      await limiter.schedule(() =>
-        interaction.reply({
-          content: "No tournaments are available",
-          flags: "Ephemeral",
-        })
-      )
+        .catch(() => null)
     }
   },
 }

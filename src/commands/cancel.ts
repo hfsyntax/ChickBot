@@ -6,7 +6,12 @@ import {
   TextChannel,
 } from "discord.js"
 import sql from "../sql"
-import limiter from "../utilities/limiter"
+import {
+  limiter,
+  messageFetchLimiter,
+  roleRemoveLimiter,
+  sendLimiter,
+} from "../utilities/limiter"
 /**
  * Cancels a pending challenge.
  *
@@ -63,19 +68,23 @@ const cancel = {
       if (interaction.member.roles.cache.has(referee)) {
         const challengeID = interaction.channel.name.split("-")[1]
         const challengeEmbed = challengeLog.isTextBased()
-          ? await limiter.schedule(() =>
-              challengeLog.messages.fetch(challengeID)
-            )
+          ? await messageFetchLimiter
+              .key(challengeLog.id)
+              .schedule(() =>
+                limiter.schedule(() => challengeLog.messages.fetch(challengeID))
+              )
+              .catch(() => null)
           : undefined
 
-        if (!challengeEmbed) {
-          return await limiter.schedule(() =>
-            interaction.reply({
-              content:
-                "Cannot cancel the challenge since the challenge embed in #challenge-logs does not exist. Contact: <@254643053548142595>",
-            })
-          )
-        }
+        if (!challengeEmbed)
+          return await limiter
+            .schedule(() =>
+              interaction.reply({
+                content:
+                  "Cannot cancel the challenge since the challenge embed in #challenge-logs does not exist. Contact: <@254643053548142595>",
+              })
+            )
+            .catch(() => null)
 
         const challengerID = challengeEmbed.embeds?.[0].data.author?.name
           .split("<")[1]
@@ -87,12 +96,15 @@ const cancel = {
           interaction.member.id === challengerID ||
           interaction.member.id === opponentID
         ) {
-          await limiter.schedule(() =>
-            interaction.reply({
-              content: "You cannot cancel a challenge you are already playing.",
-              flags: "Ephemeral",
-            })
-          )
+          await limiter
+            .schedule(() =>
+              interaction.reply({
+                content:
+                  "You cannot cancel a challenge you are already playing.",
+                flags: "Ephemeral",
+              })
+            )
+            .catch(() => null)
         } else {
           const challenger = challengerID
             ? interaction.channel.members.get(challengerID)
@@ -109,31 +121,49 @@ const cancel = {
               }
             )
 
-          if (!deleteChallengeQuery) {
-            return await limiter.schedule(() =>
-              interaction.reply({
-                content: `Failed to delete challenge data. Contact: <@254643053548142595>`,
-              })
-            )
-          }
+          if (!deleteChallengeQuery)
+            return await limiter
+              .schedule(() =>
+                interaction.reply({
+                  content: `Failed to delete challenge data. Contact: <@254643053548142595>`,
+                })
+              )
+              .catch(() => null)
 
           if (challenger) {
-            limiter.schedule(() => challenger.roles.remove(playing))
+            roleRemoveLimiter
+              .key(challenger.guild.id)
+              .schedule(() =>
+                limiter.schedule(() => challenger.roles.remove(playing))
+              )
+              .catch(() => null)
           }
-          if (opponent) {
-            await limiter.schedule(() => opponent.roles.remove(playing))
-          }
+          if (opponent)
+            await roleRemoveLimiter
+              .key(opponent.guild.id)
+              .schedule(() =>
+                limiter.schedule(() => opponent.roles.remove(playing))
+              )
+              .catch(() => null)
+
           embed.setFooter({
             text: `Referee cancelled challenge ID: ${challengeID}`,
           })
 
-          await limiter.schedule(() => challengeLog.send({ embeds: [embed] }))
-          await limiter.schedule(() =>
-            interaction.reply({
-              content: `Sucessfully cancelled challenge ID: ${challengeID}.`,
-              flags: "Ephemeral",
-            })
-          )
+          await sendLimiter
+            .key(challengeLog.id)
+            .schedule(() =>
+              limiter.schedule(() => challengeLog.send({ embeds: [embed] }))
+            )
+            .catch(() => null)
+          await limiter
+            .schedule(() =>
+              interaction.reply({
+                content: `Sucessfully cancelled challenge ID: ${challengeID}.`,
+                flags: "Ephemeral",
+              })
+            )
+            .catch(() => null)
           await limiter
             .schedule(() => {
               if (
@@ -148,40 +178,59 @@ const cancel = {
             .catch(() => null)
         }
       } else {
-        await limiter.schedule(() =>
-          interaction.reply({
-            content: "You cannot cancel a challenge you are already playing.",
-            flags: "Ephemeral",
-          })
-        )
+        await limiter
+          .schedule(() =>
+            interaction.reply({
+              content: "You cannot cancel a challenge you are already playing.",
+              flags: "Ephemeral",
+            })
+          )
+          .catch(() => null)
       }
     } else {
       // cancelling from any channel
       if (interaction.member.roles.cache.has(playing)) {
-        await limiter.schedule(() =>
-          interaction.reply({
-            content:
-              "You cannot cancel a challenge when you are already playing.",
-            flags: "Ephemeral",
-          })
-        )
+        await limiter
+          .schedule(() =>
+            interaction.reply({
+              content:
+                "You cannot cancel a challenge when you are already playing.",
+              flags: "Ephemeral",
+            })
+          )
+          .catch(() => null)
       } else if (interaction.member.roles.cache.has(queued)) {
-        await limiter.schedule(() => interaction.member.roles.remove(queued))
-        await limiter.schedule(() =>
-          interaction.reply({
-            content:
-              "You've been removed from the queue of players waiting for a challenge.",
-            flags: "Ephemeral",
-          })
-        )
+        await roleRemoveLimiter
+          .key(interaction.guild.id)
+          .schedule(() =>
+            limiter.schedule(() => interaction.member.roles.remove(queued))
+          )
+          .catch(() => null)
+        await limiter
+          .schedule(() =>
+            interaction.reply({
+              content:
+                "You've been removed from the queue of players waiting for a challenge.",
+              flags: "Ephemeral",
+            })
+          )
+          .catch(() => null)
         embed.setFooter({ text: "Cancelled qeue for challenge" })
-        await limiter.schedule(() => challengeLog.send({ embeds: [embed] }))
+        await sendLimiter
+          .key(challengeLog.id)
+          .schedule(() =>
+            limiter.schedule(() => challengeLog.send({ embeds: [embed] }))
+          )
+          .catch(() => null)
       } else {
         // cancel the first pending challenge
-        const messages = await limiter.schedule(() =>
-          challengeLog.messages.fetch({ limit: 30 })
-        )
-        const challenges = messages.filter(
+        const messages = await messageFetchLimiter
+          .key(challengeLog.id)
+          .schedule(() =>
+            limiter.schedule(() => challengeLog.messages.fetch({ limit: 30 }))
+          )
+          .catch(() => null)
+        const challenges = messages?.filter(
           (m) =>
             m.embeds.length === 1 &&
             m?.embeds?.[0]?.data?.author?.name &&
@@ -190,7 +239,7 @@ const cancel = {
             m.components.length > 0 &&
             m.components[0] instanceof ActionRow
         )
-        if (challenges.size > 0) {
+        if (challenges && challenges.size > 0) {
           const challenge = challenges.first()
           // delete challenge id from database before logging to #challenge-logs
           if (challenge?.id) {
@@ -203,11 +252,13 @@ const cancel = {
               )
 
             if (!deleteChallengeQuery) {
-              return await limiter.schedule(() =>
-                interaction.reply({
-                  content: `Database connection error contact: <@254643053548142595>`,
-                })
-              )
+              return await limiter
+                .schedule(() =>
+                  interaction.reply({
+                    content: `Database connection error contact: <@254643053548142595>`,
+                  })
+                )
+                .catch(() => null)
             }
 
             embed.setFooter({ text: `Cancelled challenge ID: ${challenge.id}` })
@@ -218,21 +269,27 @@ const cancel = {
               return challenge.delete()
             })
             .catch(() => null)
-          await limiter.schedule(() => challengeLog.send({ embeds: [embed] }))
-          await limiter.schedule(() =>
-            interaction.reply({
-              content: "Sucessfully cancelled your challenge.",
-              flags: "Ephemeral",
-            })
-          )
+          await limiter
+            .schedule(() => challengeLog.send({ embeds: [embed] }))
+            .catch(() => null)
+          await limiter
+            .schedule(() =>
+              interaction.reply({
+                content: "Sucessfully cancelled your challenge.",
+                flags: "Ephemeral",
+              })
+            )
+            .catch(() => null)
         } else {
-          await limiter.schedule(() =>
-            interaction.reply({
-              content:
-                "You have not created a challenge and you are not in a queue.",
-              flags: "Ephemeral",
-            })
-          )
+          await limiter
+            .schedule(() =>
+              interaction.reply({
+                content:
+                  "You have not created a challenge and you are not in a queue.",
+                flags: "Ephemeral",
+              })
+            )
+            .catch(() => null)
         }
       }
     }

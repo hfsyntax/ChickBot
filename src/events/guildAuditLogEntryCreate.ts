@@ -1,6 +1,6 @@
 import type { GuildAuditLogsEntry, Guild } from "discord.js"
 import { AuditLogEvent, Events, EmbedBuilder } from "discord.js"
-import limiter from "../utilities/limiter"
+import { memberFetchLimiter, limiter, sendLimiter } from "../utilities/limiter"
 
 const GuildAuditLogEntryCreate = {
   name: Events.GuildAuditLogEntryCreate,
@@ -19,14 +19,22 @@ const GuildAuditLogEntryCreate = {
       action === AuditLogEvent.MemberBanAdd ||
       action === AuditLogEvent.MemberBanRemove
     ) {
-      const executor = await limiter.schedule(() =>
-        server.members.fetch(executorId)
-      )
-      const target = await limiter.schedule(() =>
-        server.members.client.users.fetch(targetId)
-      )
+      const executor = await memberFetchLimiter
+        .key(`${server.id}_${executorId}`)
+        .schedule(() =>
+          limiter.schedule(() => server.members.fetch(executorId))
+        )
+        .catch(() => null)
+
+      const target = await memberFetchLimiter
+        .key(`${server.id}_${targetId}`)
+        .schedule(() => limiter.schedule(() => server.members.fetch(targetId)))
+        .catch(() => null)
+
+      if (!executor || !target) return
+
       const channel = server.channels.cache.get(logs)
-      const executorAvatar = executor.user.avatarURL()
+      const executorAvatar = executor?.user.avatarURL()
       const embed = new EmbedBuilder()
         .setAuthor({
           name: `${executor.user.username} <${executor.id}>`,
@@ -35,7 +43,7 @@ const GuildAuditLogEntryCreate = {
             : executor.user.defaultAvatarURL,
         })
         .addFields(
-          { name: "User:", value: `${target.username} <${target.id}>` },
+          { name: "User:", value: `${target.user.username} <${target.id}>` },
           {
             name: "Reason:",
             value: auditLog.reason ? auditLog.reason : "no reason specified",
@@ -58,7 +66,12 @@ const GuildAuditLogEntryCreate = {
         embed.setColor("Blue")
       }
 
-      await limiter.schedule(() => channel.send({ embeds: [embed] }))
+      await sendLimiter
+        .key(channel.id)
+        .schedule(() =>
+          limiter.schedule(() => channel.send({ embeds: [embed] }))
+        )
+        .catch(() => null)
     }
   },
 }

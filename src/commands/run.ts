@@ -17,8 +17,12 @@ import {
   handleRunsCollector,
   sendMessageToDeveloper,
 } from "../utilities/helper_functions.js"
-import limiter from "../utilities/limiter.js"
-import chunkMessage from "../utilities/chunkMessage.js"
+import {
+  delMessageLimiter,
+  limiter,
+  messageFetchLimiter,
+  sendLimiter,
+} from "../utilities/limiter.js"
 
 /**
  * Creates a run
@@ -41,11 +45,14 @@ async function createRun(interaction: ChatInputCommandInteraction) {
       value: `<t:${Math.floor(Date.now() / 1000)}> (${movesToDo})`,
     })
     .setTimestamp()
-  await limiter.schedule(() => interaction.reply({ embeds: [logEmbed] }))
-  const interactionMessage = await limiter.schedule(() =>
-    interaction.fetchReply()
-  )
-  logEmbed.setFooter({ text: `Started runs ${interactionMessage.id}` })
+  await limiter
+    .schedule(() => interaction.reply({ embeds: [logEmbed] }))
+    .catch(() => null)
+  const interactionMessage = await limiter
+    .schedule(() => interaction.fetchReply())
+    .catch(() => null)
+  if (interactionMessage)
+    logEmbed.setFooter({ text: `Started runs ${interactionMessage.id}` })
   await limiter.schedule(() => interaction.editReply({ embeds: [logEmbed] }))
   // send a new embed which allows us to add a collector
   const movesEmbed = new EmbedBuilder()
@@ -77,17 +84,23 @@ async function createRun(interaction: ChatInputCommandInteraction) {
     endRunsButton
   )
 
-  const sentEmbed = await limiter
-    .schedule(() => {
-      if (!interaction.channel || !(interaction.channel instanceof TextChannel))
-        throw new Error(
-          "Failed to send moves embed in run command, interaction channel does not exist or is not a text channel."
+  const sentEmbed = await sendLimiter
+    .key(interaction.channel.id)
+    .schedule(() =>
+      limiter.schedule(() => {
+        if (
+          !interaction.channel ||
+          !(interaction.channel instanceof TextChannel)
         )
-      return interaction.channel.send({
-        embeds: [movesEmbed],
-        components: [row],
+          throw new Error(
+            "Failed to send moves embed in run command, interaction channel does not exist or is not a text channel."
+          )
+        return interaction.channel.send({
+          embeds: [movesEmbed],
+          components: [row],
+        })
       })
-    })
+    )
     .catch(() => null)
 
   if (!sentEmbed) {
@@ -116,25 +129,32 @@ async function createRun(interaction: ChatInputCommandInteraction) {
     )
   if (!storeRunQuery) {
     await limiter.schedule(() => interaction.deleteReply()).catch(() => null)
-    await limiter.schedule(() => sentEmbed.delete()).catch(() => null)
-    return await limiter
-      .schedule(() => {
-        if (
-          !interaction.channel ||
-          !(interaction.channel instanceof TextChannel)
-        )
-          throw new Error(
-            "Failed to send storeRunQuery message, interaction channel does not exist or is not a text channel."
+    await delMessageLimiter
+      .key(sentEmbed.channel.id)
+      .schedule(() => limiter.schedule(() => sentEmbed.delete()))
+      .catch(() => null)
+    return await sendLimiter
+      .key(interaction.channel.id)
+      .schedule(() =>
+        limiter.schedule(() => {
+          if (
+            !interaction.channel ||
+            !(interaction.channel instanceof TextChannel)
           )
-        return interaction.channel.send({
-          content:
-            "Failed to store run message. Contact: <@254643053548142595>",
+            throw new Error(
+              "Failed to send storeRunQuery message, interaction channel does not exist or is not a text channel."
+            )
+          return interaction.channel.send({
+            content:
+              "Failed to store run message. Contact: <@254643053548142595>",
+          })
         })
-      })
+      )
       .catch(() => null)
   }
   // handle the button collector
-  handleRunsCollector(interactionMessage, sentEmbed, collector, runAttempts)
+  if (interactionMessage)
+    handleRunsCollector(interactionMessage, sentEmbed, collector, runAttempts)
 }
 
 const run = {
@@ -157,25 +177,30 @@ const run = {
         "1171571198023442535"
       )
 
-      if (!challengeLog) {
-        return await limiter.schedule(() =>
-          interaction.reply(
-            "Challenge log channel does not exist. Contact: <@254643053548142595>"
+      if (!challengeLog)
+        return await limiter
+          .schedule(() =>
+            interaction.reply(
+              "Challenge log channel does not exist. Contact: <@254643053548142595>"
+            )
           )
-        )
-      }
+          .catch(() => null)
 
-      if (!challengeLog.isTextBased()) {
-        return await limiter.schedule(() =>
-          interaction.reply(
-            "Challenge log channel is not a text channel. Contact: <@254643053548142595>"
+      if (!challengeLog.isTextBased())
+        return await limiter
+          .schedule(() =>
+            interaction.reply(
+              "Challenge log channel is not a text channel. Contact: <@254643053548142595>"
+            )
           )
-        )
-      }
+          .catch(() => null)
 
-      const challengeEmbed = await limiter.schedule(() =>
-        challengeLog.messages.fetch(challengeID)
-      )
+      const challengeEmbed = await messageFetchLimiter
+        .key(challengeLog.id)
+        .schedule(() =>
+          limiter.schedule(() => challengeLog.messages.fetch(challengeID))
+        )
+        .catch(() => null)
       const challengerID = challengeEmbed?.embeds?.[0]?.data?.author?.name
         .split("<")[1]
         .split(">")[0]
@@ -188,12 +213,14 @@ const run = {
       ) {
         createRun(interaction)
       } else {
-        await limiter.schedule(() =>
-          interaction.reply({
-            content: "Only players can request runs.",
-            flags: "Ephemeral",
-          })
-        )
+        await limiter
+          .schedule(() =>
+            interaction.reply({
+              content: "Only players can request runs.",
+              flags: "Ephemeral",
+            })
+          )
+          .catch(() => null)
       }
       // for lcs
     } else if (
@@ -202,13 +229,15 @@ const run = {
     ) {
       createRun(interaction)
     } else {
-      await limiter.schedule(() =>
-        interaction.reply({
-          content:
-            "You must be in a challenge or in #lcs-runs to use this command.",
-          flags: "Ephemeral",
-        })
-      )
+      await limiter
+        .schedule(() =>
+          interaction.reply({
+            content:
+              "You must be in a challenge or in #lcs-runs to use this command.",
+            flags: "Ephemeral",
+          })
+        )
+        .catch(() => null)
     }
   },
 }

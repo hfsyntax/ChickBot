@@ -2,7 +2,7 @@ import type { SpeedrunRecords, SpeedrunRecordsRun } from "../types"
 import type { ChatInputCommandInteraction } from "discord.js"
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js"
 import fetch from "node-fetch"
-import limiter from "../utilities/limiter"
+import { limiter } from "../utilities/limiter"
 
 function getData(arg: string) {
   const obj = {
@@ -59,12 +59,14 @@ const records = {
       return
     const category = interaction.options.get("category")?.value as string
     const platform = interaction.options.get("platform")?.value as string
-    await limiter.schedule(() =>
-      interaction.reply({
-        content: `Fetching records for ${category} ${platform}, please be patient.`,
-        flags: "Ephemeral",
-      })
-    )
+    await limiter
+      .schedule(() =>
+        interaction.reply({
+          content: `Fetching records for ${category} ${platform}, please be patient.`,
+          flags: "Ephemeral",
+        })
+      )
+      .catch(() => null)
 
     let categoryID = getData(category?.toLowerCase())
     let continueLooping = true
@@ -110,12 +112,14 @@ const records = {
     })
 
     if (apiData.length <= 0) {
-      return await limiter.schedule(() =>
-        interaction.followUp({
-          content: `<@${interaction.user.id}> no data found for ${category} ${platform}`,
-          flags: "Ephemeral",
-        })
-      )
+      return await limiter
+        .schedule(() =>
+          interaction.followUp({
+            content: `<@${interaction.user.id}> no data found for ${category} ${platform}`,
+            flags: "Ephemeral",
+          })
+        )
+        .catch(() => null)
     }
 
     // format highscores correctly and sort
@@ -172,9 +176,11 @@ const records = {
       .setFooter({ text: `Retrieved from speedrun.com/crossy` })
       .setTimestamp()
 
-    await limiter.schedule(() =>
-      interaction.followUp({ embeds: [embed], flags: "Ephemeral" })
-    )
+    await limiter
+      .schedule(() =>
+        interaction.followUp({ embeds: [embed], flags: "Ephemeral" })
+      )
+      .catch(() => null)
   },
 }
 

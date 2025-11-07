@@ -2,7 +2,7 @@ import type { SpeedrunRankings } from "../types"
 import type { ChatInputCommandInteraction } from "discord.js"
 import { SlashCommandBuilder, EmbedBuilder } from "discord.js"
 import fetch from "node-fetch"
-import limiter from "../utilities/limiter"
+import { limiter } from "../utilities/limiter"
 
 function getData(arg: string) {
   const obj = {
@@ -70,12 +70,14 @@ const rankings = {
       return
     const category = interaction.options.get("category")?.value as string
     const platform = interaction.options.get("platform")?.value as string
-    await limiter.schedule(() =>
-      interaction.reply({
-        content: `Fetching top 5 speedrun players for ${category} ${platform}, please be patient.`,
-        flags: "Ephemeral",
-      })
-    )
+    await limiter
+      .schedule(() =>
+        interaction.reply({
+          content: `Fetching top 5 speedrun players for ${category} ${platform}, please be patient.`,
+          flags: "Ephemeral",
+        })
+      )
+      .catch(() => null)
     const response = await fetch(
       `https://www.speedrun.com/api/v1/leaderboards/j1n29w1p/category/${getData(
         [category, platform].join(" ")
@@ -88,11 +90,14 @@ const rankings = {
       !apiData.data ||
       apiData.data.runs.length < 5
     ) {
-      return await limiter.schedule(() =>
-        interaction.followUp({
-          content: "The category doesn't exist or is there is not enough data.",
-        })
-      )
+      return await limiter
+        .schedule(() =>
+          interaction.followUp({
+            content:
+              "The category doesn't exist or is there is not enough data.",
+          })
+        )
+        .catch(() => null)
     }
 
     let content = ""
@@ -120,9 +125,11 @@ const rankings = {
       )
       .setFooter({ text: `Retrieved from speedrun.com/crossy` })
       .setTimestamp()
-    await limiter.schedule(() =>
-      interaction.followUp({ embeds: [embed], flags: "Ephemeral" })
-    )
+    await limiter
+      .schedule(() =>
+        interaction.followUp({ embeds: [embed], flags: "Ephemeral" })
+      )
+      .catch(() => null)
   },
 }
 

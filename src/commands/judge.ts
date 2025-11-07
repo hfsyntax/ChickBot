@@ -3,7 +3,7 @@ import type { ChatInputCommandInteraction } from "discord.js"
 import { SlashCommandBuilder, EmbedBuilder, TextChannel } from "discord.js"
 import sql from "../sql.js"
 import { calculateElo } from "../utilities/calculateElo.js"
-import limiter from "../utilities/limiter.js"
+import { limiter } from "../utilities/limiter.js"
 
 const judge = {
   data: new SlashCommandBuilder()
@@ -67,21 +67,25 @@ const judge = {
         )
 
         if (!challengeLog) {
-          return await limiter.schedule(() =>
-            interaction.reply({
-              content:
-                "Challenge log does not exist. Contact <@254643053548142595>",
-            })
-          )
+          return await limiter
+            .schedule(() =>
+              interaction.reply({
+                content:
+                  "Challenge log does not exist. Contact <@254643053548142595>",
+              })
+            )
+            .catch(() => null)
         }
 
         if (!challengeLog.isTextBased()) {
-          return await limiter.schedule(() =>
-            interaction.reply({
-              content:
-                "Challenge log is not a text channel. Contact <@254643053548142595>",
-            })
-          )
+          return await limiter
+            .schedule(() =>
+              interaction.reply({
+                content:
+                  "Challenge log is not a text channel. Contact <@254643053548142595>",
+              })
+            )
+            .catch(() => null)
         }
 
         if (
@@ -90,40 +94,50 @@ const judge = {
           !player2ID ||
           !players.has(player2ID)
         ) {
-          return await limiter.schedule(() =>
-            interaction.reply({
-              content: "Supplied players must be in the same channel.",
-              flags: "Ephemeral",
-            })
-          )
+          return await limiter
+            .schedule(() =>
+              interaction.reply({
+                content: "Supplied players must be in the same channel.",
+                flags: "Ephemeral",
+              })
+            )
+            .catch(() => null)
         } else if (player1ID === player2ID) {
-          return await limiter.schedule(() =>
-            interaction.reply({
-              content: "Player 1 cannot be the same as player 2.",
-              flags: "Ephemeral",
-            })
-          )
+          return await limiter
+            .schedule(() =>
+              interaction.reply({
+                content: "Player 1 cannot be the same as player 2.",
+                flags: "Ephemeral",
+              })
+            )
+            .catch(() => null)
         } else if (players.has(interaction.user.id)) {
-          return await limiter.schedule(() =>
-            interaction.reply({
-              content: "You cannot judge your own challenge.",
-              flags: "Ephemeral",
-            })
-          )
+          return await limiter
+            .schedule(() =>
+              interaction.reply({
+                content: "You cannot judge your own challenge.",
+                flags: "Ephemeral",
+              })
+            )
+            .catch(() => null)
         } else if (score1 < 0 || score2 < 0) {
-          return await limiter.schedule(() =>
-            interaction.reply({
-              content: "neither score can be negative.",
-              flags: "Ephemeral",
-            })
-          )
+          return await limiter
+            .schedule(() =>
+              interaction.reply({
+                content: "neither score can be negative.",
+                flags: "Ephemeral",
+              })
+            )
+            .catch(() => null)
         } else {
           const challengeID = interaction.channel.name.split("-")[1]
-          await limiter.schedule(() =>
-            interaction.reply({
-              content: `Attempting to judge challenge ID: ${challengeID}`,
-            })
-          )
+          await limiter
+            .schedule(() =>
+              interaction.reply({
+                content: `Attempting to judge challenge ID: ${challengeID}`,
+              })
+            )
+            .catch(() => null)
 
           //insert new players and assign crossyoff role
           const player1Query =
@@ -408,9 +422,9 @@ const judge = {
           }
 
           //convert player1/player2 params to challenger/opponent
-          const challengeMessage = await limiter.schedule(() =>
-            challengeLog?.messages?.fetch(challengeID)
-          )
+          const challengeMessage = await limiter
+            .schedule(() => challengeLog?.messages?.fetch(challengeID))
+            .catch(() => null)
           const challengerID =
             challengeMessage?.embeds?.[0]?.data?.author?.name?.match(
               /<(.*?)>/
@@ -564,12 +578,14 @@ const judge = {
           challengeEmbedBuilder.setFooter({
             text: `Finished challenge ID: ${challengeID}`,
           })
-          await limiter.schedule(() =>
-            challengeMessage.edit({
-              embeds: [challengeEmbedBuilder],
-              components: [],
-            })
-          )
+          await limiter
+            .schedule(() =>
+              challengeMessage.edit({
+                embeds: [challengeEmbedBuilder],
+                components: [],
+              })
+            )
+            .catch(() => null)
           await limiter
             .schedule(() => {
               if (!player1.member)
@@ -599,21 +615,25 @@ const judge = {
             .catch(() => null)
         }
       } else {
-        await limiter.schedule(() =>
+        await limiter
+          .schedule(() =>
+            interaction.reply({
+              content:
+                "You must be in a created challenge channel to use this command.",
+              flags: "Ephemeral",
+            })
+          )
+          .catch(() => null)
+      }
+    } else {
+      await limiter
+        .schedule(() =>
           interaction.reply({
-            content:
-              "You must be in a created challenge channel to use this command.",
+            content: "You do not have permission to use this command.",
             flags: "Ephemeral",
           })
         )
-      }
-    } else {
-      await limiter.schedule(() =>
-        interaction.reply({
-          content: "You do not have permission to use this command.",
-          flags: "Ephemeral",
-        })
-      )
+        .catch(() => null)
     }
   },
 }
