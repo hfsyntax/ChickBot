@@ -8,6 +8,7 @@ import {
   GatewayIntentBits,
   Collection,
   MessageFlags,
+  Partials,
 } from "discord.js"
 import express from "express"
 import "dotenv/config"
@@ -24,6 +25,13 @@ const client = new Client({
     GatewayIntentBits.GuildMembers,
     GatewayIntentBits.GuildPresences,
     GatewayIntentBits.GuildModeration,
+  ],
+  partials: [
+    Partials.GuildMember,
+    Partials.Message,
+    Partials.Reaction,
+    Partials.User,
+    Partials.Channel,
   ],
 })
 
